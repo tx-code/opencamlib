@@ -1,9 +1,0 @@
-@PACKAGE_INIT@
-
-include(CMakeFindDependencyMacro)
-find_dependency(Eigen3 3.4)
-find_dependency(libigl CONFIG)
-
-include("${CMAKE_CURRENT_LIST_DIR}/opencamlib-targets.cmake")
-
-check_required_components(opencamlib) 

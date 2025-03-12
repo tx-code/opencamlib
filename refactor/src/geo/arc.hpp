@@ -21,7 +21,7 @@
 #ifndef OCL_ARC_HPP
 #define OCL_ARC_HPP
 
-#include "../common/types.hpp"
+#include "common/types.hpp"
 #include "geometry.hpp"
 #include <cmath>
 #include <optional>

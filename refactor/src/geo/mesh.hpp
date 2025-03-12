@@ -32,7 +32,7 @@
 #include <string>
 #include <vector>
 
-#include "../common/types.hpp"
+#include "common/types.hpp"
 #include "geometry.hpp"
 
 namespace ocl {
@@ -40,11 +40,14 @@ namespace ocl {
 // 网格接口
 class IMesh : public IGeometry {
 public:
-  virtual ~IMesh() = default;
+  ~IMesh() override = default;
 
   // 获取顶点和面数据
   virtual const VertexMatrix &vertices() const = 0;
   virtual const FaceMatrix &faces() const = 0;
+
+  // 获取顶点数量
+  virtual size_t vertexCount() const = 0;
 
   // 获取三角形数量
   virtual size_t triangleCount() const = 0;
@@ -98,6 +101,9 @@ public:
   // 获取顶点和面数据
   const VertexMatrix &vertices() const override { return vertices_; }
   const FaceMatrix &faces() const override { return faces_; }
+
+  // 获取顶点数量
+  size_t vertexCount() const override { return vertices_.rows(); }
 
   // 获取三角形数量
   size_t triangleCount() const override { return faces_.rows(); }

@@ -1,5 +1,7 @@
 # 测试模块的CMakeLists.txt
 
+find_package(Boost REQUIRED COMPONENTS unit_test_framework)
+
 # Define test data directory
 set(TEST_DATA_DIR "${CMAKE_CURRENT_SOURCE_DIR}/data")
 file(MAKE_DIRECTORY ${TEST_DATA_DIR})
@@ -31,3 +33,4 @@ endfunction()
 
 # 添加测试文件
 add_boost_test(test_geometry test_geometry.cpp)
+add_boost_test(test_cutter test_cutter.cpp)

@@ -36,11 +36,18 @@ using Matrix3 = Eigen::Matrix3d;
 using Matrix4 = Eigen::Matrix4d;
 using Quaternion = Eigen::Quaterniond;
 using Transform = Eigen::Affine3d;
+using AlignedBox3 = Eigen::AlignedBox3d;
 
 // 网格数据类型
-using VertexMatrix = Eigen::MatrixXd; // n x 3 矩阵，每行是一个顶点
-using FaceMatrix = Eigen::MatrixXi; // m x 3 矩阵，每行是一个面的三个顶点索引
-using NormalMatrix = Eigen::MatrixXd; // n x 3 矩阵，每行是一个法向量
+using VertexMatrix =
+    Eigen::Matrix<double, Eigen::Dynamic, 3,
+                  Eigen::RowMajor>; // n x 3 矩阵，每行是一个顶点
+using FaceMatrix =
+    Eigen::Matrix<int, Eigen::Dynamic, 3,
+                  Eigen::RowMajor>; // m x 3 矩阵，每行是一个面的三个顶点索引
+using NormalMatrix =
+    Eigen::Matrix<double, Eigen::Dynamic, 3,
+                  Eigen::RowMajor>; // n x 3 矩阵，每行是一个法向量
 
 // 常用常量
 constexpr double PI = 3.14159265358979323846;
@@ -59,7 +66,6 @@ template <typename T> inline Point toPoint(const T &p) {
 template <typename T> inline Vector3 toVector3(const T &v) {
   return Vector3(v.x(), v.y(), v.z());
 }
-
 } // namespace ocl
 
 #endif // OCL_TYPES_HPP
