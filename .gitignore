@@ -27,5 +27,4 @@ dist/
 _build/
 boost*
 env/
-.idea/.gitignore
-.idea/material_theme_project_new.xml
+.idea/*
