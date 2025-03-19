@@ -394,24 +394,92 @@ Drop Cutter算法中采用的两步重叠检测是提高性能的关键策略，
 
 - KD树将三维空间递归地划分为不同区域，每个节点代表一个分割平面
 - 三角形存储在KD树的叶节点中，根据其边界框的空间位置
-- 查询时使用刀具的边界框在KD树中进行空间搜索
+- 查询时使用刀具的**特殊查询体积**在KD树中进行空间搜索
 
-**实现**：
+**重要说明 - 刀具查询体积**：
+
+- Drop Cutter算法中的KD树查询**不仅仅**是简单地计算刀具当前位置的包围盒与工件三角形的重叠
+- 对于每个刀具位置(x,y,z)，算法构建了一个特殊的**查询柱体**：
+  - XY平面：以刀具在XY平面上的投影圆为基础（半径为刀具半径）
+  - Z方向：从当前z坐标**一直向上延伸到无穷大**
+  - 这个"向上无限延伸的圆柱体"确保了能找到所有可能在刀具上方的三角形
+
+**search_cutter_overlap 方法实现**：
 
 ```cpp
-std::list<Triangle*> triangles_list;
-CLPoint cl(cl_x, cl_y, cl_z);
+std::list<Triangle*> KDNode::search_cutter_overlap(const MillingCutter& cutter, const Point& cl) const {
+    std::list<Triangle*> tris;
+    if (this->isLeaf()) {
+        // 叶节点，检查内部的所有三角形
+        BOOST_FOREACH(Triangle* t, this->triangles) {
+            tris.push_back(t);
+        }
+        return tris;
+    }
 
-// 使用KD树查找可能重叠的三角形
-triangles_list = stl_tree->search_cutter_overlap(cutter, cl);
+    // 计算刀具在XY平面上的边界框
+    double radius = cutter.getRadius();
+    Point cutter_bb_min = Point(cl.x - radius, cl.y - radius, cl.z);
+    Point cutter_bb_max = Point(cl.x + radius, cl.y + radius, INFINITY); // Z方向延伸到无穷大
+
+    // 根据分割维度和位置，决定递归搜索哪些子节点
+    if (dim == 0) { // 按X轴分割
+        if (cl.x - radius <= split) // 刀具边界框左侧超过分割面
+            tris.splice(tris.end(), pLow->search_cutter_overlap(cutter, cl));
+        if (cl.x + radius >= split) // 刀具边界框右侧超过分割面
+            tris.splice(tris.end(), pHigh->search_cutter_overlap(cutter, cl));
+    } else if (dim == 1) { // 按Y轴分割
+        // 类似X轴的判断...
+    } else { // 按Z轴分割
+        if (cl.z <= split) // 刀具当前Z位置在分割面下方
+            tris.splice(tris.end(), pLow->search_cutter_overlap(cutter, cl));
+        
+        // 由于我们的查询体积向上延伸到无穷大，总是需要检查上半部分的节点
+        tris.splice(tris.end(), pHigh->search_cutter_overlap(cutter, cl));
+    }
+    
+    return tris;
+}
 ```
 
-**特点**：
+**为什么这种方式能处理"刀具在工件下方"的情况**：
 
-1. **快速但粗略**：这一步迅速排除了大部分肯定不会与刀具接触的三角形
-2. **基于边界框**：使用轴对齐边界框(AABB)进行检测，不考虑精确的几何形状
-3. **时间复杂度**：平均情况下为O(log n)，其中n是STL模型中的三角形总数
-4. **保守估计**：为了确保不遗漏可能的接触，这一步的检测结果会包含一些"误报"（实际不重叠但返回可能重叠的三角形）
+1. **"无穷高"的查询体积**：
+   - 查询的不是刀具的实际包围盒，而是从刀具当前位置向上延伸到无穷大的圆柱体
+   - 这确保了无论刀具当前位置多低，都能找到其上方的所有可能相交三角形
+
+2. **Z方向的特殊处理**：
+   - 当KD树按Z轴分割时，如果分割平面在刀具上方，算法总是会搜索上半部分
+   - 这是因为我们需要找到刀具上方的所有三角形，以确定"最低的接触点"
+
+3. **实际工作流程示例**：
+   - 假设刀具位于z=-10的位置，而工件最低点在z=0
+   - KD树查询会创建一个从z=-10延伸到z=∞的圆柱体
+   - 这个查询体积会与位于z≥0的工件三角形相交
+   - 从而返回所有可能与刀具在XY平面投影重叠的三角形，无论其Z坐标多高
+
+4. **Drop Cutter的本质**：
+   - Drop Cutter算法的核心是"从高处向下查找最先接触的表面"
+   - 通过构造从当前位置向上无限延伸的查询体积，算法能够找到所有可能在刀具下降路径上的三角形
+
+**KD树查询的视觉表示**：
+
+```
+     z
+     |          工件三角形
+     |         /  |  \
+     |        /   |   \
+     |       /    |    \
+     |      --------------
+     |           /|\
+     |          / | \     查询圆柱体 (向上无限延伸)
+     |         /  |  \
+     |        /   |   \ 
+     o-------x----+----y---
+              刀具中心
+```
+
+这种特殊的查询方式确保了无论刀具初始位置多低，KD树查询总能找到上方可能与刀具接触的所有三角形，从而使后续的精确计算能够正确确定最低接触点。
 
 ### 7.2 第二步：精确XY平面重叠检测
 
