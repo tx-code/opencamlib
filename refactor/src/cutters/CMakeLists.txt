@@ -1,18 +1,28 @@
-# CmakeLists.txt for OpenCAMLib src/cutters directory
+target_sources(ocl
+    PRIVATE
+    ballcutter.cpp
+    bullcutter.cpp
+    compositecutter.cpp
+    conecutter.cpp
+    cylcutter.cpp
+    ellipse.cpp
+    ellipseposition.cpp
+    millingcutter.cpp
+)
 
-message(STATUS " configuring src/cutters")
+target_sources(ocl
+    PUBLIC
+    ballcutter.hpp
+    bullcutter.hpp
+    compositecutter.hpp
+    conecutter.hpp
+    cylcutter.hpp
+    ellipse.hpp
+    ellipseposition.hpp
+    millingcutter.hpp
+)
 
-if(UNIX)
-    add_definitions(-fPIC)
-endif(UNIX)
-
-include_directories(${PROJECT_SOURCE_DIR})
-include_directories(${PROJECT_SOURCE_DIR}/geo)
-include_directories(${PROJECT_SOURCE_DIR}/algo)
-include_directories(${PROJECT_SOURCE_DIR}/common)
-
-add_library(
-    ocl_cutters
-    STATIC
-    ${OCL_CUTTER_SRC}
+target_include_directories(ocl
+    PUBLIC 
+    ${CMAKE_CURRENT_SOURCE_DIR}
 )

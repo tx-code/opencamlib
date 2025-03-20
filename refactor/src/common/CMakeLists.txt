@@ -1,20 +1,18 @@
-# CmakeLists.txt for OpenCAMLib src/common directory
+target_sources(ocl
+    PRIVATE
+    numeric.cpp
+    lineclfilter.cpp
+    PUBLIC
+    brent_zero.hpp
+    clfilter.hpp
+    halfedgediagram.hpp
+    kdtree.hpp
+    kdnode.hpp
+    numeric.hpp
+    lineclfilter.hpp
+)
 
-message(STATUS " configuring src/common")
-
-if(UNIX)
-    add_definitions(-fPIC)
-endif(UNIX)
-
-include_directories(${PROJECT_SOURCE_DIR})
-include_directories(${PROJECT_SOURCE_DIR}/geo)
-include_directories(${PROJECT_SOURCE_DIR}/algo)
-include_directories(${PROJECT_SOURCE_DIR}/dropcutter)
-include_directories(${PROJECT_SOURCE_DIR}/cutters)
-include_directories(${PROJECT_SOURCE_DIR}/common)
-
-add_library(
-    ocl_common
-    STATIC
-    ${OCL_COMMON_SRC}
+target_include_directories(ocl
+    PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}
 )

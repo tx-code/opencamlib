@@ -1,20 +1,20 @@
-# CmakeLists.txt for OpenCAMLib src/dropcutter directory
+target_sources(ocl
+    PRIVATE
+    adaptivepathdropcutter.cpp
+    batchdropcutter.cpp
+    pathdropcutter.cpp
+    pointdropcutter.cpp
+)
 
-message(STATUS " configuring src/dropcutter")
+target_sources(ocl
+    PUBLIC
+    adaptivepathdropcutter.hpp
+    batchdropcutter.hpp
+    pathdropcutter.hpp
+    pointdropcutter.hpp
+)
 
-if(UNIX)
-    add_definitions(-fPIC)
-endif(UNIX)
-
-include_directories(${PROJECT_SOURCE_DIR})
-include_directories(${PROJECT_SOURCE_DIR}/geo)
-include_directories(${PROJECT_SOURCE_DIR}/algo)
-include_directories(${PROJECT_SOURCE_DIR}/dropcutter)
-include_directories(${PROJECT_SOURCE_DIR}/cutters)
-include_directories(${PROJECT_SOURCE_DIR}/common)
-
-add_library(
-    ocl_dropcutter
-    STATIC
-    ${OCL_DROPCUTTER_SRC}
+target_include_directories(ocl
+    PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}
 )

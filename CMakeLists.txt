@@ -15,10 +15,11 @@ endif()
 # Common 3rd party libraries
 find_package(libigl CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
+find_package(Boost REQUIRED COMPONENTS math graph unit_test_framework)
 
 add_subdirectory(refactor/src)
 
-option(OCL_BUILD_EXAMPLES "build the examples to try the ocl" ON)
+option(OCL_BUILD_EXAMPLES "build the examples to try the ocl" OFF)
 option(OCL_BUILD_TESTS "build the tests to test the ocl" OFF)
 
 if(OCL_BUILD_EXAMPLES)

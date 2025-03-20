@@ -1,22 +1,35 @@
-# CmakeLists.txt for OpenCAMLib src/algo directory
+target_sources(ocl
+  PRIVATE
+  adaptivewaterline.cpp
+  batchpushcutter.cpp
+  fiber.cpp
+  fiberpushcutter.cpp
+  interval.cpp
+  simple_weave.cpp
+  smart_weave.cpp
+  waterline.cpp
+  weave.cpp
+)
 
-message(STATUS " configuring src/algo")
+target_sources(ocl
+  PUBLIC
+  adaptivewaterline.hpp
+  batchpushcutter.hpp
+  clsurface.hpp
+  fiber.hpp
+  fiberpushcutter.hpp
+  interval.hpp
+  operation.hpp
+  simple_weave.hpp
+  smart_weave.hpp
+  tsp.hpp
+  waterline.hpp
+  weave.hpp
+  weave_typedef.hpp
+  zigzag.hpp
+)
 
-if(UNIX)
-  add_definitions(-fPIC)
-endif(UNIX)
-
-include_directories(${PROJECT_SOURCE_DIR})
-include_directories(${PROJECT_SOURCE_DIR}/geo)
-include_directories(${PROJECT_SOURCE_DIR}/cutters)
-include_directories(${PROJECT_SOURCE_DIR}/algo)
-include_directories(${PROJECT_SOURCE_DIR}/common)
-
-#
-# this builds a static ocl_algo target
-#
-add_library(
-  ocl_algo
-  STATIC
-  ${OCL_ALGO_SRC}
+target_include_directories(ocl
+  PUBLIC 
+  ${CMAKE_CURRENT_SOURCE_DIR}
 )

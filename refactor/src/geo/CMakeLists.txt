@@ -1,22 +1,32 @@
-# CmakeLists.txt for OpenCAMLib src/geo directory
+target_sources(ocl
+    PRIVATE
+    arc.cpp
+    bbox.cpp
+    ccpoint.cpp
+    clpoint.cpp
+    line.cpp
+    path.cpp
+    point.cpp
+    stlreader.cpp
+    stlsurf.cpp
+    triangle.cpp
+)
 
-message(STATUS " configuring src/geo")
+target_sources(ocl
+    PUBLIC
+    arc.hpp
+    bbox.hpp
+    ccpoint.hpp
+    clpoint.hpp
+    line.hpp
+    path.hpp
+    point.hpp
+    stlreader.hpp
+    stlsurf.hpp
+    triangle.hpp
+)
 
-if(UNIX)
-    add_definitions(-fPIC)
-endif(UNIX)
-
-include_directories(${PROJECT_SOURCE_DIR})
-include_directories(${PROJECT_SOURCE_DIR}/cutters)
-include_directories(${PROJECT_SOURCE_DIR}/algo)
-include_directories(${PROJECT_SOURCE_DIR}/geo)
-include_directories(${PROJECT_SOURCE_DIR}/common)
-
-#
-# this makes the ocl Python module
-#
-add_library(
-    ocl_geo
-    STATIC
-    ${OCL_GEO_SRC}
+target_include_directories(ocl
+    PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}
 )
