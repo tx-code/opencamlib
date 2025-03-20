@@ -22,7 +22,7 @@
 #define ARC_H
 
 #include "point.hpp"
-#include "numeric.hpp"
+#include "common/numeric.hpp"
 
 namespace ocl
 {

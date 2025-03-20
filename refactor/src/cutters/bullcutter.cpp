@@ -25,7 +25,7 @@
 #include <boost/foreach.hpp>
 
 #include "bullcutter.hpp"
-#include "numeric.hpp"
+#include "common/numeric.hpp"
 
 namespace ocl
 {

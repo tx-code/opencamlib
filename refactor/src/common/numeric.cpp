@@ -23,7 +23,7 @@
 #include <cassert>
 
 #include "numeric.hpp"
-#include "point.hpp"
+#include "geo/point.hpp"
 
 #ifdef _WIN32 // Windows platform problem: error C3861: 'isnan': identifier not found, use the Boost version instead
 #include <boost/math/special_functions/fpclassify.hpp> // isnan

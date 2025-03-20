@@ -23,7 +23,7 @@
 #include <string>
 
 #include "compositecutter.hpp"
-#include "numeric.hpp"
+#include "common/numeric.hpp"
 #include "cylcutter.hpp"
 #include "ballcutter.hpp"
 #include "bullcutter.hpp"

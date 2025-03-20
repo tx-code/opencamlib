@@ -27,7 +27,7 @@
 
 #include "conecutter.hpp"
 #include "compositecutter.hpp" // for offsetCutter()
-#include "numeric.hpp"
+#include "common/numeric.hpp"
 
 namespace ocl
 {

@@ -25,9 +25,9 @@
     #include <omp.h>
 #endif
 
-#include "millingcutter.hpp"
-#include "point.hpp"
-#include "triangle.hpp"
+#include "cutters/millingcutter.hpp"
+#include "geo/point.hpp"
+#include "geo/triangle.hpp"
 #include "waterline.hpp"
 #include "batchpushcutter.hpp"
 // #include "weave.hpp"

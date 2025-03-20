@@ -27,9 +27,8 @@
 #endif
 
 #include "batchdropcutter.hpp"
-#include "point.hpp"
-#include "triangle.hpp"
-
+#include "geo/point.hpp"
+#include "geo/triangle.hpp"
 
 namespace ocl {
 

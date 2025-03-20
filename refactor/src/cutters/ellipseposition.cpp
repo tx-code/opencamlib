@@ -25,10 +25,10 @@
 // #define NDEBUG
 #include <cassert>
 
-#include "point.hpp"
+#include "geo/point.hpp"
 #include "ellipseposition.hpp"
 #include "ellipse.hpp"
-#include "numeric.hpp"
+#include "common/numeric.hpp"
 namespace ocl
 {
 

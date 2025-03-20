@@ -26,7 +26,7 @@
 #include <string>
 #include <list>
 
-#include "clpoint.hpp"
+#include "geo/clpoint.hpp"
 
 namespace ocl
 {  

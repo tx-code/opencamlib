@@ -25,10 +25,10 @@
 #include <cassert>
 
 
-#include "ellipse.hpp"
-#include "numeric.hpp"
-#include "brent_zero.hpp"
-#include "fiber.hpp"
+#include "cutters/ellipse.hpp"
+#include "common/numeric.hpp"
+#include "common/brent_zero.hpp"
+#include "algo/fiber.hpp"
 
 namespace ocl
 {

@@ -13,8 +13,3 @@ target_sources(ocl
     pathdropcutter.hpp
     pointdropcutter.hpp
 )
-
-target_include_directories(ocl
-    PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}
-)

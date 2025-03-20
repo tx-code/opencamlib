@@ -25,8 +25,3 @@ target_sources(ocl
     stlsurf.hpp
     triangle.hpp
 )
-
-target_include_directories(ocl
-    PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}
-)

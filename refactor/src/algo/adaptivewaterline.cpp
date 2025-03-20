@@ -29,11 +29,11 @@
     #include <omp.h>
 #endif
 
-#include "millingcutter.hpp"
-#include "point.hpp"
-#include "triangle.hpp"
-#include "line.hpp"
-#include "path.hpp"
+#include "cutters/millingcutter.hpp"
+#include "geo/point.hpp"
+#include "geo/triangle.hpp"
+#include "geo/line.hpp"
+#include "geo/path.hpp"
 
 #include "adaptivewaterline.hpp"
 #include "weave.hpp"

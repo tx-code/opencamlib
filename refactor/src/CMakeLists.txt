@@ -2,7 +2,7 @@
 
 # 添加子目录
 
-# We now only have one shared library, ocl
+# We now only have one library, ocl
 add_library(ocl STATIC)
 
 target_sources(ocl
@@ -12,7 +12,8 @@ target_sources(ocl
 
 target_include_directories(ocl
     PRIVATE
-    ${CMAKE_CURRENT_BINARY_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR} 
+    ${CMAKE_CURRENT_BINARY_DIR} # include the version_string.hpp file
 )
 
 target_link_libraries(ocl

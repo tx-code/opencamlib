@@ -26,9 +26,9 @@
 #include <string>
 #include <vector>
 
-#include "point.hpp"
-#include "fiber.hpp"
-#include "operation.hpp"
+#include "geo/point.hpp"
+#include "algo/fiber.hpp"
+#include "algo/operation.hpp"
 
 namespace ocl
 {

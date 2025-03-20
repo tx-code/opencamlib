@@ -11,8 +11,3 @@ target_sources(ocl
     numeric.hpp
     lineclfilter.hpp
 )
-
-target_include_directories(ocl
-    PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}
-)

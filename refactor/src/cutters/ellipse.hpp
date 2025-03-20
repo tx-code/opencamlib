@@ -24,7 +24,7 @@
 
 #include <list>
 
-#include "point.hpp"
+#include "geo/point.hpp"
 #include "ellipseposition.hpp"
 
 namespace ocl

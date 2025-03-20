@@ -30,8 +30,8 @@
 
 #include "pathdropcutter.hpp"
 #include "pointdropcutter.hpp"
-#include "path.hpp"
-#include "clpoint.hpp"
+#include "geo/path.hpp"
+#include "geo/clpoint.hpp"
 
 namespace ocl
 {

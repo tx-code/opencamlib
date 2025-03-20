@@ -21,8 +21,3 @@ target_sources(ocl
     ellipseposition.hpp
     millingcutter.hpp
 )
-
-target_include_directories(ocl
-    PUBLIC 
-    ${CMAKE_CURRENT_SOURCE_DIR}
-)

@@ -20,8 +20,8 @@
 */
 
 #include "lineclfilter.hpp"
-#include "point.hpp"
-#include "clpoint.hpp"
+#include "geo/point.hpp"
+#include "geo/clpoint.hpp"
 
 namespace ocl
 {
