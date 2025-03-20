@@ -19,6 +19,7 @@ find_package(Boost REQUIRED COMPONENTS math graph unit_test_framework)
 
 add_subdirectory(refactor/src)
 
+option(OCL_BUILD_SHARED "build the ocl to shared library" ON)
 option(OCL_BUILD_EXAMPLES "build the examples to try the ocl" OFF)
 option(OCL_BUILD_TESTS "build the tests to test the ocl" OFF)
 

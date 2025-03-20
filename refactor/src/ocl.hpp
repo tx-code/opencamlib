@@ -23,10 +23,11 @@
 
 #include <string>
 
-namespace ocl
-{
-  int max_threads();
-  std::string version();
-}
+#include "ocl_export.hpp"
+
+namespace ocl {
+OCL_API int max_threads();
+OCL_API std::string version();
+} // namespace ocl
 
 #endif
