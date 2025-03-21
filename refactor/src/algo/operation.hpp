@@ -30,7 +30,6 @@
 #include "fiber.hpp"
 #include "geo/point.hpp"
 
-
 namespace ocl {
 
 class STLSurf;
@@ -40,7 +39,7 @@ class MillingCutter;
 /// \brief base-class for low-level cam algorithms
 ///
 /// base-class for cam algorithms
-class Operation {
+class OCL_API Operation {
 public:
   Operation() {}
   virtual ~Operation() {

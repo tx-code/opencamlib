@@ -31,7 +31,6 @@
 #include "common/kdtree.hpp"
 #include "geo/point.hpp"
 
-
 namespace ocl {
 
 class STLSurf;
@@ -43,7 +42,7 @@ class MillingCutter;
 /// and pushes the cutter along the fibers into contact with the surface.
 /// When this runs the Fibers will be updated with the correct interval data.
 /// This is then used to build a weave and extract a waterline.
-class BatchPushCutter : public Operation {
+class OCL_API BatchPushCutter : public Operation {
 public:
   BatchPushCutter();
   virtual ~BatchPushCutter();

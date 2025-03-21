@@ -46,7 +46,7 @@ typedef std::pair<double, double> DoublePair;
 ///
 /// \brief MillingCutter is a base-class for all milling cutters
 ///
-class MillingCutter {
+class OCL_API MillingCutter {
   friend class CompositeCutter;
 
 public:

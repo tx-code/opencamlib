@@ -40,7 +40,7 @@ namespace ocl {
 /// from an STL-model. Waterline uses two BatchPushCutter sub-operations to find
 /// out where the CL-points are located and a Weave to split and order the
 /// CL-points correctly into loops.
-class Waterline : public Operation {
+class OCL_API Waterline : public Operation {
 public:
   /// create an empty Waterline object
   Waterline();

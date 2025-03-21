@@ -51,7 +51,8 @@ endif()
 # Common 3rd party libraries
 find_package(libigl CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
-find_package(Boost REQUIRED COMPONENTS math graph unit_test_framework)
+find_package(Boost REQUIRED COMPONENTS math graph)
+find_package(OpenMP REQUIRED)
 
 add_subdirectory(refactor/src)
 
@@ -64,7 +65,9 @@ if(OCL_BUILD_EXAMPLES)
 endif()
 
 if(OCL_BUILD_TESTS)
+    find_package(Boost REQUIRED COMPONENTS unit_test_framework)
     enable_testing()
 endif()
+
 
 # TODO install rules

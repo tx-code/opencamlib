@@ -27,14 +27,13 @@
 #include "fiber.hpp"
 #include "weave_typedef.hpp"
 
-
 namespace ocl {
 
 namespace weave {
 
 // Abstract base-class for weave-implementations. build() must be implemented in
 // sub-class!
-class Weave {
+class OCL_API Weave {
 public:
   Weave() {}
   virtual ~Weave() {}

@@ -30,14 +30,13 @@
 #include "cutters/millingcutter.hpp"
 #include "geo/clpoint.hpp"
 
-
 namespace ocl {
 
 class STLSurf;
 class Triangle;
 
 /// run drop-cutter on an STL-surface at a single input CLPoint
-class PointDropCutter : public Operation {
+class OCL_API PointDropCutter : public Operation {
 public:
   PointDropCutter();
   virtual ~PointDropCutter() {

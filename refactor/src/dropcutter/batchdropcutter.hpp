@@ -43,7 +43,7 @@ class Triangle;
 /// The list of CLPoint's will be updated with the correct z-height as well
 /// as corresponding CCPoint's
 /// Some versions of this algorithm use OpenMP for multi-threading.
-class BatchDropCutter : public Operation {
+class OCL_API BatchDropCutter : public Operation {
 public:
   BatchDropCutter();
   virtual ~BatchDropCutter();

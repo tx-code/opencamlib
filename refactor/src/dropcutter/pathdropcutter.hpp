@@ -26,11 +26,9 @@
 #include <list>
 #include <string>
 
-
 #include "algo/operation.hpp"
 #include "batchdropcutter.hpp"
 #include "geo/path.hpp"
-
 
 namespace ocl {
 
@@ -41,7 +39,7 @@ class Triangle;
 
 ///
 /// \brief path drop cutter finish Path generation
-class PathDropCutter : public Operation {
+class OCL_API PathDropCutter : public Operation {
 public:
   /// construct an empty PathDropCutter object
   PathDropCutter();

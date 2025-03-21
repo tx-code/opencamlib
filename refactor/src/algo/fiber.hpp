@@ -31,7 +31,7 @@ namespace ocl {
 /// a fiber is an infinite line in space along which the cutter can be pushed
 /// into contact with a triangle. A Weave is built from many X-fibers and
 /// Y-fibers. might be called a Dexel also in some papers/textbooks.
-class Fiber {
+class OCL_API Fiber {
 public:
   Fiber() { ints.clear(); }
   /// create a Fiber between points p1 and p2

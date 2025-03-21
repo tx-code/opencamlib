@@ -23,14 +23,16 @@
 
 // File-Specific Includes
 #include "imgui_vtk_demo.h" // Actor generator for this demo
-#include "ocl.hpp"
+#include "ocl_demo.h"
 
 static void glfw_error_callback(int error, const char *description) {
   spdlog::error("Glfw Error %d: %s\n", error, description);
 }
 
 int main(int argc, char *argv[]) {
-  spdlog::info("Starting application with ocl version {}", ocl::version());
+  hello_ocl();
+
+  ocl_all_algos_demo();
   // Setup pipeline
   auto actor = SetupDemoPipeline();
 

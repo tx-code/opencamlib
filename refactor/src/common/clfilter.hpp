@@ -34,7 +34,7 @@ namespace ocl
 ///
 /// \brief CL point filter virtual base class
 ///
-class CLFilter { 
+class OCL_API CLFilter { 
     public:
         /// constructor
         CLFilter() {} ;

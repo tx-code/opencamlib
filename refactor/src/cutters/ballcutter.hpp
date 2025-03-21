@@ -28,12 +28,11 @@
 #include "common/numeric.hpp"
 #include "millingcutter.hpp"
 
-
 namespace ocl {
 
 /// \brief Ball or Spherical MillingCutter (ball-nose endmill)
 ///
-class BallCutter : public MillingCutter {
+class OCL_API BallCutter : public MillingCutter {
 public:
   BallCutter();
   /// create a BallCutter with diameter d (radius d/2) and length l
