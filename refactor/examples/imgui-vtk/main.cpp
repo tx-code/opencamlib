@@ -32,7 +32,6 @@ static void glfw_error_callback(int error, const char *description) {
 int main(int argc, char *argv[]) {
   hello_ocl();
 
-  ocl_all_algos_demo();
   // Setup pipeline
   auto actor = SetupDemoPipeline();
 
@@ -90,7 +89,7 @@ int main(int argc, char *argv[]) {
 
   // Initialize VtkViewer objects
   VtkViewer vtkViewer1;
-  vtkViewer1.addActor(actor);
+  cylCutter_waterline_demo(vtkViewer1);
 
   VtkViewer vtkViewer2;
   vtkViewer2.getRenderer()->SetBackground(0, 0, 0); // Black background
