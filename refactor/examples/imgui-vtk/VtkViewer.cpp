@@ -36,6 +36,8 @@
 // Include glfw3.h after our OpenGL definitions
 #include <GLFW/glfw3.h>
 
+#include <vtkCameraOrientationWidget.h>
+
 void VtkViewer::isCurrentCallbackFn(vtkObject *caller,
                                     long unsigned int eventId, void *clientData,
                                     void *callData) {
@@ -53,11 +55,13 @@ void VtkViewer::processEvents() {
   io.ConfigWindowsMoveFromTitleBarOnly =
       true; // don't drag window when clicking on image.
   ImVec2 viewportPos = ImGui::GetCursorStartPos();
+  // use this to offset the mouse position to the window
+  ImVec2 winPos = ImGui::GetWindowPos();
 
-  double xpos =
-      static_cast<double>(io.MousePos[0]) - static_cast<double>(viewportPos.x);
-  double ypos =
-      static_cast<double>(io.MousePos[1]) - static_cast<double>(viewportPos.y);
+  double xpos = static_cast<double>(io.MousePos[0]) - winPos.x +
+                static_cast<double>(viewportPos.x);
+  double ypos = static_cast<double>(io.MousePos[1]) - winPos.y +
+                static_cast<double>(viewportPos.y);
   int ctrl = static_cast<int>(io.KeyCtrl);
   int shift = static_cast<int>(io.KeyShift);
   bool dclick = io.MouseDoubleClicked[0] || io.MouseDoubleClicked[1] ||
@@ -166,6 +170,11 @@ void VtkViewer::init() {
   if (!renderer || !interactorStyle || !renderWindow || !interactor) {
     throw VtkViewerError("Couldn't initialize VtkViewer");
   }
+
+  // FIXME: 当前无法通过控制该widget调整视图
+  camManipulator = vtkSmartPointer<vtkCameraOrientationWidget>::New();
+  camManipulator->SetParentRenderer(renderer);
+  camManipulator->On();
 }
 
 void VtkViewer::render() { render(ImGui::GetContentRegionAvail()); }

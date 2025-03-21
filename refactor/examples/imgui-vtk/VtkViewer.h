@@ -18,6 +18,8 @@
 #include <vtkRenderer.h>
 #include <vtkSmartPointer.h>
 
+class vtkCameraOrientationWidget;
+
 // RGB Color in range [0.0, 1.0]
 #define DEFAULT_BACKGROUND 0.39, 0.39, 0.39
 // Alpha value in range [0.0, 1.0] where 1 = opaque
@@ -44,6 +46,7 @@ private:
   vtkSmartPointer<vtkGenericRenderWindowInteractor> interactor;
   vtkSmartPointer<vtkInteractorStyleTrackballCamera> interactorStyle;
   vtkSmartPointer<vtkRenderer> renderer;
+  vtkSmartPointer<vtkCameraOrientationWidget> camManipulator;
 
 private:
   unsigned int viewportWidth, viewportHeight;
