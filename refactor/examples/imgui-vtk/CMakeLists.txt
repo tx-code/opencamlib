@@ -69,4 +69,5 @@ endif()
 
 message(STATUS "VTK Version: ${VTK_VERSION}")
 
-target_link_libraries(imgui-vtk PRIVATE imgui::imgui ${VTK_LIBRARIES} unofficial::gl3w::gl3w glfw)
+target_link_libraries(imgui-vtk
+    PUBLIC imgui::imgui ${VTK_LIBRARIES} unofficial::gl3w::gl3w glfw ocl)

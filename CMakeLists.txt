@@ -12,6 +12,42 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Relase" CACHE STRING "Build type" FORCE)
 endif()
 
+# 检测是否为多配置生成器
+get_property(is_multi_config GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
+
+if(is_multi_config)
+    # 多配置生成器（如 Visual Studio）
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+
+    # 为每种构建类型设置特定输出目录
+    foreach(OUTPUT_CONFIG ${CMAKE_CONFIGURATION_TYPES})
+        string(TOLOWER ${OUTPUT_CONFIG} OUTPUT_CONFIG_LOWER)
+        string(TOUPPER ${OUTPUT_CONFIG} OUTPUT_CONFIG_UPPER)
+
+        set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_${OUTPUT_CONFIG_UPPER} ${CMAKE_BINARY_DIR}/bin/${OUTPUT_CONFIG_LOWER})
+        set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_${OUTPUT_CONFIG_UPPER} ${CMAKE_BINARY_DIR}/lib/${OUTPUT_CONFIG_LOWER})
+        set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_${OUTPUT_CONFIG_UPPER} ${CMAKE_BINARY_DIR}/lib/${OUTPUT_CONFIG_LOWER})
+    endforeach()
+
+    message(STATUS "Configured for multi-config generator")
+else()
+    # 单配置生成器（如 Unix Makefiles）
+    if(NOT CMAKE_BUILD_TYPE)
+        set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Choose the type of build." FORCE)
+    endif()
+
+    string(TOLOWER ${CMAKE_BUILD_TYPE} build_type_lower)
+
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin/${build_type_lower})
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib/${build_type_lower})
+    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib/${build_type_lower})
+
+    message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
+    message(STATUS "Binary output directory: ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
+endif()
+
 # Common 3rd party libraries
 find_package(libigl CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)

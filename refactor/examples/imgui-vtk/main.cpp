@@ -1,5 +1,6 @@
 ﻿// Standard Library
 #include <iostream>
+#include <spdlog/spdlog.h>
 
 // OpenGL Loader
 // This can be replaced with another loader, e.g. glad, but
@@ -14,7 +15,6 @@
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 
-
 #include "VtkViewer.h"
 
 // VTK
@@ -23,12 +23,14 @@
 
 // File-Specific Includes
 #include "imgui_vtk_demo.h" // Actor generator for this demo
+#include "ocl.hpp"
 
 static void glfw_error_callback(int error, const char *description) {
-  fprintf(stderr, "Glfw Error %d: %s\n", error, description);
+  spdlog::error("Glfw Error %d: %s\n", error, description);
 }
 
 int main(int argc, char *argv[]) {
+  spdlog::info("Starting application with ocl version {}", ocl::version());
   // Setup pipeline
   auto actor = SetupDemoPipeline();
 

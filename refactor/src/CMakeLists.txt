@@ -1,15 +1,8 @@
 ﻿include(version_string.cmake)
 
 # 添加子目录
-
-# We now only have one library, ocl
-if(OCL_BUILD_SHARED)
-    message(STATUS "Building shared library")
-    add_library(ocl SHARED)
-else()
-    message(STATUS "Building static library")
-    add_library(ocl STATIC)
-endif()
+message(STATUS "Building shared library")
+add_library(ocl SHARED)
 
 target_sources(ocl
     PRIVATE ocl.cpp
@@ -26,13 +19,17 @@ generate_export_header(ocl
 )
 
 target_include_directories(ocl
-    PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}
+    PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}> # include the version_string.hpp and ocl_export.hpp
 )
 
 target_link_libraries(ocl
-    PRIVATE
+    PUBLIC
+    spdlog::spdlog
+    igl::igl_core
+    igl_copyleft::igl_copyleft_cgal
+    Eigen3::Eigen
     Boost::math
     Boost::graph
 )
