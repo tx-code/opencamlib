@@ -9,3 +9,9 @@ option(OCL_BUILD_IMGUIVTK "build the imgui vtk" ON)
 if(OCL_BUILD_IMGUIVTK)
     add_subdirectory(imgui-vtk)
 endif()
+
+option(OCL_BUILD_NOGUI "build the nogui" ON)
+
+if(OCL_BUILD_NOGUI)
+    add_subdirectory(nogui)
+endif()
