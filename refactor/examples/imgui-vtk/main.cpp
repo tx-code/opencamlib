@@ -89,7 +89,8 @@ int main(int argc, char *argv[]) {
 
   // Initialize VtkViewer objects
   VtkViewer vtkViewer1;
-  ballCutter_adaptivePathDropCutter_demo(vtkViewer1);
+  cylCutter_waterline_demo(vtkViewer1);
+  // ballCutter_adaptivePathDropCutter_demo(vtkViewer1);
 
   VtkViewer vtkViewer2;
   vtkViewer2.getRenderer()->SetBackground(0, 0, 0); // Black background

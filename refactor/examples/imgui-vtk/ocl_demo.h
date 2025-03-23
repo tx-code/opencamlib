@@ -76,32 +76,57 @@ void printLoops(std::vector<std::vector<ocl::Point>> loops) {
 
 void drawLoops(VtkViewer &viewer,
                const std::vector<std::vector<ocl::Point>> &loops) {
-  for (int loop_idx = 0; loop_idx < loops.size(); loop_idx++) {
-    int nloop = 0;
-    for (const auto &lop : loops) {
-      int n = 0;
-      int N = lop.size();
-      ocl::Point first_point(-1, -1, 5);
-      ocl::Point previous(-1, -1, 5);
-      for (const auto &p : lop) {
-        if (n == 0) { // don't draw anything on the first iteration
-          previous = p;
-          first_point = p;
-        } else if (n == (N - 1)) {                          // the last point
-          viewer.addActor(CreateLine(previous, p, yellow)); // the normal line
-          // and a line from p to the first point
-          viewer.addActor(CreateLine(p, first_point, yellow));
-        } else {
-          viewer.addActor(CreateLine(previous, p, yellow));
-          previous = p;
-        }
-        n++;
-      }
-      std::cout << "rendered loop " << nloop << " with " << lop.size()
-                << " points" << std::endl;
-      nloop++;
+  // 创建一个vtkPoints对象来存储所有点
+  vtkNew<vtkPoints> points;
+  // 创建一个vtkCellArray对象来存储所有线段
+  vtkNew<vtkCellArray> lines;
+  
+  int pointCount = 0;
+  
+  // 遍历所有循环
+  for (const auto &loop : loops) {
+    int loopSize = loop.size();
+    if (loopSize < 2) continue; // 至少需要两个点才能形成线段
+    
+    // 记录该循环的起始点索引
+    int startPointId = pointCount;
+    
+    // 添加该循环的所有点
+    for (const auto &p : loop) {
+      points->InsertNextPoint(p.x, p.y, p.z);
+      pointCount++;
+    }
+    
+    // 创建该循环的线段
+    for (int i = 0; i < loopSize; i++) {
+      vtkNew<vtkLine> line;
+      line->GetPointIds()->SetId(0, startPointId + i);
+      line->GetPointIds()->SetId(1, startPointId + (i + 1) % loopSize);
+      lines->InsertNextCell(line);
     }
   }
+  
+  if (pointCount == 0) return; // 如果没有点，则直接返回
+  
+  // 创建vtkPolyData对象并设置点和线
+  vtkNew<vtkPolyData> polyData;
+  polyData->SetPoints(points);
+  polyData->SetLines(lines);
+  
+  // 创建mapper并设置输入数据
+  vtkNew<vtkPolyDataMapper> mapper;
+  mapper->SetInputData(polyData);
+  
+  // 创建actor并设置mapper
+  vtkNew<vtkActor> actor;
+  actor->SetMapper(mapper);
+  SetActorColor(actor, yellow);
+  
+  // 添加actor到viewer
+  viewer.addActor(actor);
+  
+  spdlog::info("Rendered {} loops with total {} points and {} lines", 
+               loops.size(), pointCount, lines->GetNumberOfCells());
 }
 
 void waterline(ocl::STLSurf surface, ocl::MillingCutter *cutter, double z,
