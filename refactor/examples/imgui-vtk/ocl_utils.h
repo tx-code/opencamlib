@@ -15,6 +15,7 @@
 #include <vtkLightCollection.h>
 #include <vtkLine.h>
 #include <vtkLineSource.h>
+#include <vtkLookupTable.h>
 #include <vtkMath.h>
 #include <vtkNew.h>
 #include <vtkParametricFunctionSource.h>
@@ -41,6 +42,9 @@
 #include <vtkUnsignedCharArray.h>
 #include <vtkVectorText.h>
 #include <vtkVertex.h>
+#include <vtkVertexGlyphFilter.h>
+#include <vtkIntArray.h>
+#include <vtkDoubleArray.h>
 
 #include <cmath>
 #include <memory>
@@ -463,26 +467,6 @@ CreateText3D(const double color[3] = white, double center[3] = nullptr,
   return actor;
 }
 
-// Create an axes actor (x,y,z)
-inline vtkSmartPointer<vtkActor> CreateAxes(double center[3] = nullptr,
-                                            const double color[3] = blue) {
-  double defaultCenter[3] = {0.0, 0.0, 0.0};
-  if (!center)
-    center = defaultCenter;
-
-  vtkNew<vtkAxes> source;
-  source->SetOrigin(center[0], center[1], center[2]);
-
-  vtkNew<vtkPolyDataMapper> mapper;
-  mapper->SetInputConnection(source->GetOutputPort());
-
-  vtkNew<vtkActor> actor;
-  actor->SetMapper(mapper);
-  actor->GetProperty()->SetColor(color[0], color[1], color[2]);
-
-  return actor;
-}
-
 // Create a toroid actor
 inline vtkSmartPointer<vtkActor> CreateToroid(double r1 = 1.0, double r2 = 0.25,
                                               double center[3] = nullptr,
@@ -825,5 +809,89 @@ inline vtkSmartPointer<vtkActor> CreateStlActor(const ocl::STLSurf &stl,
   actor->SetMapper(mapper);
   SetActorColor(actor, color);
 
+  return actor;
+}
+
+// Create a vtkLookupTable for CCType coloring
+inline vtkSmartPointer<vtkLookupTable> CreateCCTypeLookupTable(bool forCLPoints = true) {
+  vtkNew<vtkLookupTable> lut;
+  lut->SetNumberOfTableValues(static_cast<int>(ocl::CCType::CCTYPE_ERROR) + 1);
+  lut->SetTableRange(0, static_cast<int>(ocl::CCType::CCTYPE_ERROR));
+  
+  // 为每种CCType设置颜色
+  for (int i = 0; i <= static_cast<int>(ocl::CCType::CCTYPE_ERROR); i++) {
+    ocl::CCType ccType = static_cast<ocl::CCType>(i);
+    double color[3];
+    
+    if (forCLPoints) {
+      GetClColor(ccType, color);
+    } else {
+      GetCcColor(ccType, color);
+    }
+    
+    lut->SetTableValue(i, color[0], color[1], color[2], 1.0);
+  }
+  
+  lut->Build();
+  return lut;
+}
+
+// Draw a point cloud with CCType-based coloring using lookup table
+inline vtkSmartPointer<vtkActor> DrawCLPointCloudWithLUT(VtkViewer &viewer,
+                            const std::vector<ocl::CLPoint> &clpoints,
+                            bool forCLPoints = true) {
+  // 创建点集
+  vtkNew<vtkPoints> points;
+  
+  // 遍历所有点，添加到点集中
+  for (const auto &p : clpoints) {
+    points->InsertNextPoint(p.x, p.y, p.z);
+  }
+  
+  // 创建多边形数据对象
+  vtkNew<vtkPolyData> pointsPolydata;
+  pointsPolydata->SetPoints(points);
+  
+  // 使用顶点滤波器将点转换为可渲染的顶点
+  vtkNew<vtkVertexGlyphFilter> vertexFilter;
+  vertexFilter->SetInputData(pointsPolydata);
+  vertexFilter->Update();
+  
+  // 复制结果数据
+  vtkNew<vtkPolyData> polydata;
+  polydata->ShallowCopy(vertexFilter->GetOutput());
+  
+  // 创建用于存储CCType整型值的数组
+  vtkNew<vtkIntArray> typeValues;
+  typeValues->SetNumberOfComponents(1);
+  typeValues->SetName("CCType");
+  
+  // 添加每个点的类型值
+  for (const auto &p : clpoints) {
+    auto *cc = p.cc.load();
+    typeValues->InsertNextValue(static_cast<int>(cc->type));
+  }
+  
+  // 将类型值添加到多边形数据的点数据中
+  polydata->GetPointData()->SetScalars(typeValues);
+  
+  // 创建颜色查找表
+  auto lut = CreateCCTypeLookupTable(forCLPoints);
+  
+  // 设置映射器
+  vtkNew<vtkPolyDataMapper> mapper;
+  mapper->SetInputData(polydata);
+  mapper->SetLookupTable(lut);
+  mapper->SetScalarRange(0, static_cast<int>(ocl::CCType::CCTYPE_ERROR));
+  mapper->SetScalarModeToUsePointData();
+  mapper->ScalarVisibilityOn();
+  
+  // 创建演员对象
+  vtkNew<vtkActor> actor;
+  actor->SetMapper(mapper);
+  actor->GetProperty()->SetPointSize(5); // 增大点的大小以便更好地可视化
+  
+  // 添加到查看器并返回演员对象
+  viewer.addActor(actor);
   return actor;
 }

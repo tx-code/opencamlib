@@ -142,6 +142,7 @@ void pathDropCutter(ocl::STLSurf surface, ocl::MillingCutter *cutter,
                     double sampling, ocl::Path *path,
                     VtkViewer *viewer = nullptr) {
   ocl::PathDropCutter pdc = ocl::PathDropCutter();
+  spdlog::stopwatch sw;
   pdc.setSTL(surface);
   pdc.setCutter(cutter);
   pdc.setPath(path);
@@ -151,15 +152,17 @@ void pathDropCutter(ocl::STLSurf surface, ocl::MillingCutter *cutter,
   pdc.run();
   auto points = pdc.getPoints();
   printPoints(points);
+  spdlog::info("PDC done in {} ms and got {} points", sw, points.size());
 
   if (viewer) {
-    DrawCLPoints(*viewer, points);
+    DrawCLPointCloudWithLUT(*viewer, points);
   }
 }
 
 void adaptivePathDropCutter(ocl::STLSurf surface, ocl::MillingCutter *cutter,
                             double sampling, double minSampling,
-                            ocl::Path *path) {
+                            ocl::Path *path, VtkViewer *viewer = nullptr) {
+  spdlog::stopwatch sw;
   ocl::AdaptivePathDropCutter apdc = ocl::AdaptivePathDropCutter();
   apdc.setSTL(surface);
   apdc.setCutter(cutter);
@@ -171,6 +174,11 @@ void adaptivePathDropCutter(ocl::STLSurf surface, ocl::MillingCutter *cutter,
   apdc.run();
   auto points = apdc.getPoints();
   printPoints(points);
+  spdlog::info("APDC done in {} ms and got {} points", sw, points.size());
+
+  if (viewer) {
+    DrawCLPointCloudWithLUT(*viewer, points);
+  }
 }
 
 void ocl_all_algos_demo(VtkViewer &viewer) {
@@ -244,19 +252,23 @@ ocl::STLSurf loadSTLModel(VtkViewer &viewer, const std::wstring &stlPath) {
 
 // 创建标准测试路径
 ocl::Path createTestPath() {
-  ocl::Path path = ocl::Path();
-  int i = 0;
-  for (double y = 0; y <= 0.2; y = y + 0.1) {
-    bool ltr = ((int)i % 2) == 0;
-    ocl::Point p1 = ocl::Point(ltr ? -2 : 11, y, 0);
-    ocl::Point p2 = ocl::Point(ltr ? 11 : -2, y, 0);
-    ocl::Line l = ocl::Line(p1, p2);
-    path.append(l);
-    ocl::Point p3 = ocl::Point(ltr ? 11 : -2, y + 1, 0);
-    ocl::Line l2 = ocl::Line(p2, p3);
-    path.append(l2);
-    i++;
+  ocl::Path path;
+  
+  // 设置路径参数
+  double ymin = 0;
+  double ymax = 12;
+  int Ny = 40;  // y方向的线条数量
+  double dy = (ymax - ymin) / Ny;  // y方向的步进值
+  
+  // 添加线段到路径中
+  for (int n = 0; n < Ny; n++) {
+    double y = ymin + n * dy;
+    ocl::Point p1(0, y, 0);   // 线段起点
+    ocl::Point p2(9, y, 0);   // 线段终点
+    ocl::Line l(p1, p2);      // 创建线段对象
+    path.append(l);           // 将线段添加到路径中
   }
+  
   return path;
 }
 
@@ -336,6 +348,6 @@ void ballCutter_adaptivePathDropCutter_demo(VtkViewer &viewer) {
   ocl::Path path = createTestPath();
 
   spdlog::info("Ball Cutter Adaptive PathDropCutter: {}", ballCutter.str());
-  adaptivePathDropCutter(surface, &ballCutter, sampling, minSampling, &path);
+  adaptivePathDropCutter(surface, &ballCutter, sampling, minSampling, &path, &viewer);
   spdlog::info("Adaptive PathDropCutter operation completed in {} ms", sw);
 }
