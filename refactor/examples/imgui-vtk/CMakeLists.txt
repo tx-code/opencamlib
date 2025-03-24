@@ -3,6 +3,7 @@ message(STATUS "Configuring imgui-vtk")
 
 find_package(gl3w REQUIRED)
 find_package(glfw3 REQUIRED)
+find_package(nfd REQUIRED)
 
 # the imgui should be installed with the glfw3 and opengl3 bindings
 # vcpkg install imgui[glfw-binding, opengl3-binding]
@@ -71,4 +72,4 @@ endif()
 message(STATUS "VTK Version: ${VTK_VERSION}")
 
 target_link_libraries(imgui-vtk
-    PUBLIC imgui::imgui ${VTK_LIBRARIES} unofficial::gl3w::gl3w glfw ocl)
+    PUBLIC imgui::imgui ${VTK_LIBRARIES} unofficial::gl3w::gl3w glfw nfd::nfd ocl)
