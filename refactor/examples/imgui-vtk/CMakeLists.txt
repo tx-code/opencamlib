@@ -48,6 +48,7 @@ endif()
 
 add_executable(imgui-vtk
     main.cpp
+    ocl_utils.cpp
     VtkViewer.cpp
 )
 

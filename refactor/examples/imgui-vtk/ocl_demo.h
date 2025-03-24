@@ -22,360 +22,360 @@
 #include "ocl.hpp"
 
 void hello_ocl() {
-  spdlog::info("ocl version: {}", ocl::version());
-  spdlog::info("max threads: {}", ocl::max_threads());
+    spdlog::info("ocl version: {}", ocl::version());
+    spdlog::info("max threads: {}", ocl::max_threads());
 }
 
 void printXYZ(ocl::Point point) {
-  // printf("X%g ", round(point.x * 100000.0) / 100000.0);
-  // printf("Y%g ", round(point.y * 100000.0) / 100000.0);
-  // printf("Z%g", round(point.z * 100000.0) / 100000.0);
+    // printf("X%g ", round(point.x * 100000.0) / 100000.0);
+    // printf("Y%g ", round(point.y * 100000.0) / 100000.0);
+    // printf("Z%g", round(point.z * 100000.0) / 100000.0);
 }
 
 void linear(ocl::Point point) {
-  // printf("G01 ");
-  // printXYZ(point);
-  // printf("\n");
+    // printf("G01 ");
+    // printXYZ(point);
+    // printf("\n");
 }
 
 void moveSafely(ocl::Point point) {
-  // printf("G00 Z10\n");
-  // printf("G00 ");
-  // printf("X%g ", round(point.x * 100000.0) / 100000.0);
-  // printf("Y%g\n", round(point.y * 100000.0) / 100000.0);
-  // printf("G01 ");
-  // printf("Z%g", round(point.z * 100000.0) / 100000.0);
-  // printf(" F50\n");
+    // printf("G00 Z10\n");
+    // printf("G00 ");
+    // printf("X%g ", round(point.x * 100000.0) / 100000.0);
+    // printf("Y%g\n", round(point.y * 100000.0) / 100000.0);
+    // printf("G01 ");
+    // printf("Z%g", round(point.z * 100000.0) / 100000.0);
+    // printf(" F50\n");
 }
 
 void printPoints(std::vector<ocl::Point> points) {
-  for (auto j = 0; j < points.size(); j++) {
-    auto point = points[j];
-    if (j == 0)
-      moveSafely(point);
-    else
-      linear(point);
-  }
+    for (auto j = 0; j < points.size(); j++) {
+        auto point = points[j];
+        if (j == 0)
+            moveSafely(point);
+        else
+            linear(point);
+    }
 }
 
 void printPoints(std::vector<ocl::CLPoint> points) {
-  for (auto j = 0; j < points.size(); j++) {
-    auto point = points[j];
-    if (j == 0)
-      moveSafely(point);
-    else
-      linear(point);
-  }
+    for (auto j = 0; j < points.size(); j++) {
+        auto point = points[j];
+        if (j == 0)
+            moveSafely(point);
+        else
+            linear(point);
+    }
 }
 
 void printLoops(std::vector<std::vector<ocl::Point>> loops) {
-  for (auto i = 0; i < loops.size(); i++) {
-    printPoints(loops[i]);
-  }
+    for (auto i = 0; i < loops.size(); i++) {
+        printPoints(loops[i]);
+    }
 }
 
-void drawLoops(VtkViewer &viewer,
-               const std::vector<std::vector<ocl::Point>> &loops) {
-  // 创建一个vtkPoints对象来存储所有点
-  vtkNew<vtkPoints> points;
-  // 创建一个vtkCellArray对象来存储所有线段
-  vtkNew<vtkCellArray> lines;
+void drawLoops(VtkViewer& viewer,
+               const std::vector<std::vector<ocl::Point>>& loops) {
+    // 创建一个vtkPoints对象来存储所有点
+    vtkNew<vtkPoints> points;
+    // 创建一个vtkCellArray对象来存储所有线段
+    vtkNew<vtkCellArray> lines;
 
-  int pointCount = 0;
+    int pointCount = 0;
 
-  // 遍历所有循环
-  for (const auto &loop : loops) {
-    int loopSize = loop.size();
-    if (loopSize < 2)
-      continue; // 至少需要两个点才能形成线段
+    // 遍历所有循环
+    for (const auto& loop: loops) {
+        int loopSize = loop.size();
+        if (loopSize < 2)
+            continue; // 至少需要两个点才能形成线段
 
-    // 记录该循环的起始点索引
-    int startPointId = pointCount;
+        // 记录该循环的起始点索引
+        int startPointId = pointCount;
 
-    // 添加该循环的所有点
-    for (const auto &p : loop) {
-      points->InsertNextPoint(p.x, p.y, p.z);
-      pointCount++;
+        // 添加该循环的所有点
+        for (const auto& p: loop) {
+            points->InsertNextPoint(p.x, p.y, p.z);
+            pointCount++;
+        }
+
+        // 创建该循环的线段
+        for (int i = 0; i < loopSize; i++) {
+            vtkNew<vtkLine> line;
+            line->GetPointIds()->SetId(0, startPointId + i);
+            line->GetPointIds()->SetId(1, startPointId + (i + 1) % loopSize);
+            lines->InsertNextCell(line);
+        }
     }
 
-    // 创建该循环的线段
-    for (int i = 0; i < loopSize; i++) {
-      vtkNew<vtkLine> line;
-      line->GetPointIds()->SetId(0, startPointId + i);
-      line->GetPointIds()->SetId(1, startPointId + (i + 1) % loopSize);
-      lines->InsertNextCell(line);
-    }
-  }
+    if (pointCount == 0)
+        return; // 如果没有点，则直接返回
 
-  if (pointCount == 0)
-    return; // 如果没有点，则直接返回
+    // 创建vtkPolyData对象并设置点和线
+    vtkNew<vtkPolyData> polyData;
+    polyData->SetPoints(points);
+    polyData->SetLines(lines);
 
-  // 创建vtkPolyData对象并设置点和线
-  vtkNew<vtkPolyData> polyData;
-  polyData->SetPoints(points);
-  polyData->SetLines(lines);
+    // 创建mapper并设置输入数据
+    vtkNew<vtkPolyDataMapper> mapper;
+    mapper->SetInputData(polyData);
 
-  // 创建mapper并设置输入数据
-  vtkNew<vtkPolyDataMapper> mapper;
-  mapper->SetInputData(polyData);
+    // 创建actor并设置mapper
+    vtkNew<vtkActor> actor;
+    actor->SetMapper(mapper);
+    SetActorColor(actor, yellow);
 
-  // 创建actor并设置mapper
-  vtkNew<vtkActor> actor;
-  actor->SetMapper(mapper);
-  SetActorColor(actor, yellow);
+    // 添加actor到viewer
+    viewer.addActor(actor);
 
-  // 添加actor到viewer
-  viewer.addActor(actor);
-
-  spdlog::info("Rendered {} loops with total {} points and {} lines",
-               loops.size(), pointCount, lines->GetNumberOfCells());
+    spdlog::info("Rendered {} loops with total {} points and {} lines",
+                 loops.size(), pointCount, lines->GetNumberOfCells());
 }
 
-void waterline(ocl::STLSurf surface, ocl::MillingCutter *cutter, double z,
-               double sampling, VtkViewer *viewer = nullptr) {
-  ocl::Waterline wl = ocl::Waterline();
-  wl.setSTL(surface);
-  wl.setCutter(cutter);
-  wl.setSampling(sampling);
-  for (double h = 0; h < z; h = h + 0.1) {
-    wl.reset();
-    wl.setZ(h);
-    wl.run();
-    auto loops = wl.getLoops();
-    // printLoops(loops);
-    if (viewer) {
-      drawLoops(*viewer, loops);
+void waterline(ocl::STLSurf surface, ocl::MillingCutter* cutter, double z,
+               double sampling, VtkViewer* viewer = nullptr) {
+    ocl::Waterline wl = ocl::Waterline();
+    wl.setSTL(surface);
+    wl.setCutter(cutter);
+    wl.setSampling(sampling);
+    for (double h = 0; h < z; h = h + 0.1) {
+        wl.reset();
+        wl.setZ(h);
+        wl.run();
+        auto loops = wl.getLoops();
+        // printLoops(loops);
+        if (viewer) {
+            drawLoops(*viewer, loops);
+        }
     }
-  }
 }
 
-void adaptiveWaterline(ocl::STLSurf surface, ocl::MillingCutter *cutter,
+void adaptiveWaterline(ocl::STLSurf surface, ocl::MillingCutter* cutter,
                        double z, double sampling, double minSampling) {
-  ocl::AdaptiveWaterline awl = ocl::AdaptiveWaterline();
-  awl.setSTL(surface);
-  awl.setCutter(cutter);
-  awl.setSampling(sampling);
-  awl.setMinSampling(minSampling);
-  for (double h = 0; h < z; h = h + 0.1) {
-    awl.reset();
-    awl.setZ(h);
-    awl.run();
-    auto loops = awl.getLoops();
-    printLoops(loops);
-  }
+    ocl::AdaptiveWaterline awl = ocl::AdaptiveWaterline();
+    awl.setSTL(surface);
+    awl.setCutter(cutter);
+    awl.setSampling(sampling);
+    awl.setMinSampling(minSampling);
+    for (double h = 0; h < z; h = h + 0.1) {
+        awl.reset();
+        awl.setZ(h);
+        awl.run();
+        auto loops = awl.getLoops();
+        printLoops(loops);
+    }
 }
 
-void pathDropCutter(ocl::STLSurf surface, ocl::MillingCutter *cutter,
-                    double sampling, ocl::Path *path,
-                    VtkViewer *viewer = nullptr) {
-  ocl::PathDropCutter pdc = ocl::PathDropCutter();
-  spdlog::stopwatch sw;
-  pdc.setSTL(surface);
-  pdc.setCutter(cutter);
-  pdc.setPath(path);
-  pdc.setSampling(sampling);
-  pdc.reset();
-  pdc.setZ(0);
-  pdc.run();
-  auto points = pdc.getPoints();
-  printPoints(points);
-  spdlog::info("PDC done in {} ms and got {} points", sw, points.size());
+void pathDropCutter(ocl::STLSurf surface, ocl::MillingCutter* cutter,
+                    double sampling, ocl::Path* path,
+                    VtkViewer* viewer = nullptr) {
+    ocl::PathDropCutter pdc = ocl::PathDropCutter();
+    spdlog::stopwatch sw;
+    pdc.setSTL(surface);
+    pdc.setCutter(cutter);
+    pdc.setPath(path);
+    pdc.setSampling(sampling);
+    pdc.reset();
+    pdc.setZ(0);
+    pdc.run();
+    auto points = pdc.getPoints();
+    printPoints(points);
+    spdlog::info("PDC done in {} ms and got {} points", sw, points.size());
 
-  if (viewer) {
-    DrawCLPointCloudWithLUT(*viewer, points);
-  }
+    if (viewer) {
+        DrawCLPointCloudWithLUT(*viewer, points);
+    }
 }
 
-void adaptivePathDropCutter(ocl::STLSurf surface, ocl::MillingCutter *cutter,
+void adaptivePathDropCutter(ocl::STLSurf surface, ocl::MillingCutter* cutter,
                             double sampling, double minSampling,
-                            ocl::Path *path, VtkViewer *viewer = nullptr) {
-  spdlog::stopwatch sw;
-  ocl::AdaptivePathDropCutter apdc = ocl::AdaptivePathDropCutter();
-  apdc.setSTL(surface);
-  apdc.setCutter(cutter);
-  apdc.setPath(path);
-  apdc.setSampling(sampling);
-  apdc.setMinSampling(minSampling);
-  apdc.reset();
-  apdc.setZ(0);
-  apdc.run();
-  auto points = apdc.getPoints();
-  printPoints(points);
-  spdlog::info("APDC done in {} ms and got {} points", sw, points.size());
+                            ocl::Path* path, VtkViewer* viewer = nullptr) {
+    spdlog::stopwatch sw;
+    ocl::AdaptivePathDropCutter apdc = ocl::AdaptivePathDropCutter();
+    apdc.setSTL(surface);
+    apdc.setCutter(cutter);
+    apdc.setPath(path);
+    apdc.setSampling(sampling);
+    apdc.setMinSampling(minSampling);
+    apdc.reset();
+    apdc.setZ(0);
+    apdc.run();
+    auto points = apdc.getPoints();
+    printPoints(points);
+    spdlog::info("APDC done in {} ms and got {} points", sw, points.size());
 
-  if (viewer) {
-    DrawCLPointCloudWithLUT(*viewer, points);
-  }
+    if (viewer) {
+        DrawCLPointCloudWithLUT(*viewer, points);
+    }
 }
 
-void ocl_all_algos_demo(VtkViewer &viewer) {
-  spdlog::stopwatch sw;
+void ocl_all_algos_demo(VtkViewer& viewer) {
+    spdlog::stopwatch sw;
 
-  ocl::STLSurf surface = ocl::STLSurf();
-  std::wstring stlPath = L"./stl/gnu_tux_mod.stl";
-  ocl::STLReader(stlPath, surface);
-  spdlog::info("surface size: {} in {} ms", surface.size(), sw);
-  viewer.addActor(CreateStlActor(surface));
+    ocl::STLSurf surface = ocl::STLSurf();
+    std::wstring stlPath = L"./stl/gnu_tux_mod.stl";
+    ocl::STLReader(stlPath, surface);
+    spdlog::info("surface size: {} in {} ms", surface.size(), sw);
+    viewer.modelActor = DrawStlSurf(viewer, surface);
 
-  ocl::CylCutter cylCutter = ocl::CylCutter(0.4, 10);
-  ocl::BallCutter ballCutter = ocl::BallCutter(4, 20);
-  ocl::BullCutter bullCutter = ocl::BullCutter(4, 0.05, 20);
-  ocl::ConeCutter coneCutter = ocl::ConeCutter(4, 0.05, 20);
-  std::vector<ocl::MillingCutter *> cutters;
-  cutters.push_back(&cylCutter);
-  cutters.push_back(&ballCutter);
-  cutters.push_back(&bullCutter);
-  cutters.push_back(&coneCutter);
-  double z = 0.5;
-  double sampling = 0.1;
-  for (auto cutter : cutters) {
-    spdlog::info("WL + Cutter: {}", cutter->str());
-    waterline(surface, cutter, z, sampling);
-    spdlog::info("WL done in {} ms", sw);
-  }
-  double minSampling = 0.01;
-  for (auto cutter : cutters) {
-    spdlog::info("AWL + Cutter: {}", cutter->str());
-    adaptiveWaterline(surface, cutter, z, sampling, minSampling);
-    spdlog::info("AWL done in {} ms", sw);
-  }
-  ocl::Path path = ocl::Path();
-  int i = 0;
-  for (double y = 0; y <= 0.2; y = y + 0.1) {
-    bool ltr = ((int)i % 2) == 0;
-    ocl::Point p1 = ocl::Point(ltr ? -2 : 11, y, 0);
-    ocl::Point p2 = ocl::Point(ltr ? 11 : -2, y, 0);
-    ocl::Line l = ocl::Line(p1, p2);
-    path.append(l);
-    ocl::Point p3 = ocl::Point(ltr ? 11 : -2, y + 1, 0);
-    ocl::Line l2 = ocl::Line(p2, p3);
-    path.append(l2);
-    i++;
-  }
-  for (auto cutter : cutters) {
-    spdlog::info("PDC + Cutter: {}", cutter->str());
-    pathDropCutter(surface, cutter, sampling, &path);
-    spdlog::info("PDC done in {} ms", sw);
-  }
-  for (auto cutter : cutters) {
-    spdlog::info("APDC: {}", cutter->str());
-    adaptivePathDropCutter(surface, cutter, sampling, minSampling, &path);
-    spdlog::info("APDC done in {} ms", sw);
-  }
+    ocl::CylCutter cylCutter = ocl::CylCutter(0.4, 10);
+    ocl::BallCutter ballCutter = ocl::BallCutter(4, 20);
+    ocl::BullCutter bullCutter = ocl::BullCutter(4, 0.05, 20);
+    ocl::ConeCutter coneCutter = ocl::ConeCutter(4, 0.05, 20);
+    std::vector<ocl::MillingCutter *> cutters;
+    cutters.push_back(&cylCutter);
+    cutters.push_back(&ballCutter);
+    cutters.push_back(&bullCutter);
+    cutters.push_back(&coneCutter);
+    double z = 0.5;
+    double sampling = 0.1;
+    for (auto cutter: cutters) {
+        spdlog::info("WL + Cutter: {}", cutter->str());
+        waterline(surface, cutter, z, sampling);
+        spdlog::info("WL done in {} ms", sw);
+    }
+    double minSampling = 0.01;
+    for (auto cutter: cutters) {
+        spdlog::info("AWL + Cutter: {}", cutter->str());
+        adaptiveWaterline(surface, cutter, z, sampling, minSampling);
+        spdlog::info("AWL done in {} ms", sw);
+    }
+    ocl::Path path = ocl::Path();
+    int i = 0;
+    for (double y = 0; y <= 0.2; y = y + 0.1) {
+        bool ltr = ((int) i % 2) == 0;
+        ocl::Point p1 = ocl::Point(ltr ? -2 : 11, y, 0);
+        ocl::Point p2 = ocl::Point(ltr ? 11 : -2, y, 0);
+        ocl::Line l = ocl::Line(p1, p2);
+        path.append(l);
+        ocl::Point p3 = ocl::Point(ltr ? 11 : -2, y + 1, 0);
+        ocl::Line l2 = ocl::Line(p2, p3);
+        path.append(l2);
+        i++;
+    }
+    for (auto cutter: cutters) {
+        spdlog::info("PDC + Cutter: {}", cutter->str());
+        pathDropCutter(surface, cutter, sampling, &path);
+        spdlog::info("PDC done in {} ms", sw);
+    }
+    for (auto cutter: cutters) {
+        spdlog::info("APDC: {}", cutter->str());
+        adaptivePathDropCutter(surface, cutter, sampling, minSampling, &path);
+        spdlog::info("APDC done in {} ms", sw);
+    }
 }
 
 // 导入STL模型并创建VTK可视化表面
-ocl::STLSurf loadSTLModel(VtkViewer &viewer, const std::wstring &stlPath) {
-  spdlog::stopwatch sw;
-  ocl::STLSurf surface = ocl::STLSurf();
-  ocl::STLReader(stlPath, surface);
-  spdlog::info(
-      "Loading STL model: {} Triangle count: {} Time: {} ms",
-      std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(stlPath),
-      surface.size(), sw);
-  viewer.addActor(CreateStlActor(surface));
-  return surface;
+ocl::STLSurf loadSTLModel(VtkViewer& viewer, const std::wstring& stlPath) {
+    spdlog::stopwatch sw;
+    ocl::STLSurf surface = ocl::STLSurf();
+    ocl::STLReader(stlPath, surface);
+    spdlog::info(
+        "Loading STL model: {} Triangle count: {} Time: {} ms",
+        std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(stlPath),
+        surface.size(), sw);
+    viewer.modelActor = DrawStlSurf(viewer, surface);
+    return surface;
 }
 
 // 创建标准测试路径
 ocl::Path createTestPath() {
-  ocl::Path path;
+    ocl::Path path;
 
-  // 设置路径参数
-  double ymin = 0;
-  double ymax = 12;
-  int Ny = 40;                    // y方向的线条数量
-  double dy = (ymax - ymin) / Ny; // y方向的步进值
+    // 设置路径参数
+    double ymin = 0;
+    double ymax = 12;
+    int Ny = 40; // y方向的线条数量
+    double dy = (ymax - ymin) / Ny; // y方向的步进值
 
-  // 添加线段到路径中
-  for (int n = 0; n < Ny; n++) {
-    double y = ymin + n * dy;
-    ocl::Point p1(0, y, 0); // 线段起点
-    ocl::Point p2(9, y, 0); // 线段终点
-    ocl::Line l(p1, p2);    // 创建线段对象
-    path.append(l);         // 将线段添加到路径中
-  }
+    // 添加线段到路径中
+    for (int n = 0; n < Ny; n++) {
+        double y = ymin + n * dy;
+        ocl::Point p1(0, y, 0); // 线段起点
+        ocl::Point p2(9, y, 0); // 线段终点
+        ocl::Line l(p1, p2); // 创建线段对象
+        path.append(l); // 将线段添加到路径中
+    }
 
-  return path;
+    return path;
 }
 
 // 圆柱铣刀水平等高线切削演示
-void cylCutter_waterline_demo(VtkViewer &viewer) {
-  spdlog::stopwatch sw;
-  std::wstring stlPath = L"./stl/gnu_tux_mod.stl";
-  ocl::STLSurf surface = loadSTLModel(viewer, stlPath);
-  auto height = surface.bb.maxpt.z - surface.bb.minpt.z;
+void cylCutter_waterline_demo(VtkViewer& viewer) {
+    spdlog::stopwatch sw;
+    std::wstring stlPath = L"./stl/gnu_tux_mod.stl";
+    ocl::STLSurf surface = loadSTLModel(viewer, stlPath);
+    auto height = surface.bb.maxpt.z - surface.bb.minpt.z;
 
-  ocl::CylCutter cylCutter = ocl::CylCutter(0.4, 10);
-  DrawCylCutter(viewer, cylCutter, ocl::Point(0, 0, 0));
-  // double z = 0.5;
-  double z = height;
-  double sampling = 0.1;
+    ocl::CylCutter cylCutter = ocl::CylCutter(0.4, 10);
+    DrawCylCutter(viewer, cylCutter, ocl::Point(0, 0, 0));
+    // double z = 0.5;
+    double z = height;
+    double sampling = 0.1;
 
-  spdlog::info("Cylindrical Cutter Waterline: {}", cylCutter.str());
-  waterline(surface, &cylCutter, z, sampling, &viewer);
-  spdlog::info("Waterline operation completed in {} ms", sw);
+    spdlog::info("Cylindrical Cutter Waterline: {}", cylCutter.str());
+    waterline(surface, &cylCutter, z, sampling, &viewer);
+    spdlog::info("Waterline operation completed in {} ms", sw);
 }
 
 // 球头铣刀水平等高线切削演示
-void ballCutter_waterline_demo(VtkViewer &viewer) {
-  spdlog::stopwatch sw;
-  std::wstring stlPath = L"./stl/gnu_tux_mod.stl";
-  ocl::STLSurf surface = loadSTLModel(viewer, stlPath);
+void ballCutter_waterline_demo(VtkViewer& viewer) {
+    spdlog::stopwatch sw;
+    std::wstring stlPath = L"./stl/gnu_tux_mod.stl";
+    ocl::STLSurf surface = loadSTLModel(viewer, stlPath);
 
-  ocl::BallCutter ballCutter = ocl::BallCutter(4, 20);
-  double z = 0.5;
-  double sampling = 0.1;
+    ocl::BallCutter ballCutter = ocl::BallCutter(4, 20);
+    double z = 0.5;
+    double sampling = 0.1;
 
-  spdlog::info("Ball Cutter Waterline: {}", ballCutter.str());
-  waterline(surface, &ballCutter, z, sampling);
-  spdlog::info("Waterline operation completed in {} ms", sw);
+    spdlog::info("Ball Cutter Waterline: {}", ballCutter.str());
+    waterline(surface, &ballCutter, z, sampling);
+    spdlog::info("Waterline operation completed in {} ms", sw);
 }
 
 // 牛头铣刀自适应水平等高线切削演示
-void bullCutter_adaptiveWaterline_demo(VtkViewer &viewer) {
-  spdlog::stopwatch sw;
-  std::wstring stlPath = L"./stl/gnu_tux_mod.stl";
-  ocl::STLSurf surface = loadSTLModel(viewer, stlPath);
+void bullCutter_adaptiveWaterline_demo(VtkViewer& viewer) {
+    spdlog::stopwatch sw;
+    std::wstring stlPath = L"./stl/gnu_tux_mod.stl";
+    ocl::STLSurf surface = loadSTLModel(viewer, stlPath);
 
-  ocl::BullCutter bullCutter = ocl::BullCutter(4, 0.05, 20);
-  double z = 0.5;
-  double sampling = 0.1;
-  double minSampling = 0.01;
+    ocl::BullCutter bullCutter = ocl::BullCutter(4, 0.05, 20);
+    double z = 0.5;
+    double sampling = 0.1;
+    double minSampling = 0.01;
 
-  spdlog::info("Bull Cutter Adaptive Waterline: {}", bullCutter.str());
-  adaptiveWaterline(surface, &bullCutter, z, sampling, minSampling);
-  spdlog::info("Adaptive waterline operation completed in {} ms", sw);
+    spdlog::info("Bull Cutter Adaptive Waterline: {}", bullCutter.str());
+    adaptiveWaterline(surface, &bullCutter, z, sampling, minSampling);
+    spdlog::info("Adaptive waterline operation completed in {} ms", sw);
 }
 
 // 圆锥铣刀路径降刀演示
-void coneCutter_pathDropCutter_demo(VtkViewer &viewer) {
-  spdlog::stopwatch sw;
-  std::wstring stlPath = L"./stl/gnu_tux_mod.stl";
-  ocl::STLSurf surface = loadSTLModel(viewer, stlPath);
+void coneCutter_pathDropCutter_demo(VtkViewer& viewer) {
+    spdlog::stopwatch sw;
+    std::wstring stlPath = L"./stl/gnu_tux_mod.stl";
+    ocl::STLSurf surface = loadSTLModel(viewer, stlPath);
 
-  ocl::ConeCutter coneCutter = ocl::ConeCutter(4, 0.05, 20);
-  double sampling = 0.1;
-  ocl::Path path = createTestPath();
+    ocl::ConeCutter coneCutter = ocl::ConeCutter(4, 0.05, 20);
+    double sampling = 0.1;
+    ocl::Path path = createTestPath();
 
-  spdlog::info("Cone Cutter PathDropCutter: {}", coneCutter.str());
-  pathDropCutter(surface, &coneCutter, sampling, &path, &viewer);
-  spdlog::info("PathDropCutter operation completed in {} ms", sw);
+    spdlog::info("Cone Cutter PathDropCutter: {}", coneCutter.str());
+    pathDropCutter(surface, &coneCutter, sampling, &path, &viewer);
+    spdlog::info("PathDropCutter operation completed in {} ms", sw);
 }
 
 // 球头铣刀自适应路径降刀演示
-void ballCutter_adaptivePathDropCutter_demo(VtkViewer &viewer) {
-  spdlog::stopwatch sw;
-  std::wstring stlPath = L"./stl/gnu_tux_mod.stl";
-  ocl::STLSurf surface = loadSTLModel(viewer, stlPath);
+void ballCutter_adaptivePathDropCutter_demo(VtkViewer& viewer) {
+    spdlog::stopwatch sw;
+    std::wstring stlPath = L"./stl/gnu_tux_mod.stl";
+    ocl::STLSurf surface = loadSTLModel(viewer, stlPath);
 
-  ocl::BallCutter ballCutter = ocl::BallCutter(4, 20);
-  double sampling = 0.1;
-  double minSampling = 0.01;
-  ocl::Path path = createTestPath();
+    ocl::BallCutter ballCutter = ocl::BallCutter(4, 20);
+    double sampling = 0.1;
+    double minSampling = 0.01;
+    ocl::Path path = createTestPath();
 
-  spdlog::info("Ball Cutter Adaptive PathDropCutter: {}", ballCutter.str());
-  adaptivePathDropCutter(surface, &ballCutter, sampling, minSampling, &path,
-                         &viewer);
-  spdlog::info("Adaptive PathDropCutter operation completed in {} ms", sw);
+    spdlog::info("Ball Cutter Adaptive PathDropCutter: {}", ballCutter.str());
+    adaptivePathDropCutter(surface, &ballCutter, sampling, minSampling, &path,
+                           &viewer);
+    spdlog::info("Adaptive PathDropCutter operation completed in {} ms", sw);
 }

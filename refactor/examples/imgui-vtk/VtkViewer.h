@@ -27,98 +27,111 @@ class vtkCameraOrientationWidget;
 
 class VtkViewerError : public std::runtime_error {
 public:
-  explicit VtkViewerError(const std::string &message) throw()
-      : std::runtime_error(message) {}
-  ~VtkViewerError() = default;
+    explicit VtkViewerError(const std::string& message) throw()
+        : std::runtime_error(message) {
+    }
+
+    ~VtkViewerError() override = default;
 
 public:
-  virtual char const *what() const throw() { return exception::what(); }
+    char const* what() const throw() override { return exception::what(); }
 };
 
 class VtkViewer {
 private:
-  static void isCurrentCallbackFn(vtkObject *caller, long unsigned int eventId,
-                                  void *clientData, void *callData);
-  void processEvents();
+    static void isCurrentCallbackFn(vtkObject* caller, long unsigned int eventId,
+                                    void* clientData, void* callData);
+
+    void processEvents();
 
 private:
-  vtkSmartPointer<vtkGenericOpenGLRenderWindow> renderWindow;
-  vtkSmartPointer<vtkGenericRenderWindowInteractor> interactor;
-  vtkSmartPointer<vtkInteractorStyleTrackballCamera> interactorStyle;
-  vtkSmartPointer<vtkRenderer> renderer;
-  vtkSmartPointer<vtkCameraOrientationWidget> camManipulator;
+    vtkSmartPointer<vtkGenericOpenGLRenderWindow> renderWindow;
+    vtkSmartPointer<vtkGenericRenderWindowInteractor> interactor;
+    vtkSmartPointer<vtkInteractorStyleTrackballCamera> interactorStyle;
+    vtkSmartPointer<vtkRenderer> renderer;
+    vtkSmartPointer<vtkCameraOrientationWidget> camManipulator;
 
 private:
-  unsigned int viewportWidth, viewportHeight;
-  unsigned int tex;
-  bool firstRender;
+    unsigned int viewportWidth, viewportHeight;
+    unsigned int tex;
+    bool firstRender;
 
 public:
-  VtkViewer();
-  VtkViewer(const VtkViewer &vtkViewer);
-  VtkViewer(VtkViewer &&vtkViewer) noexcept;
-  ~VtkViewer();
+    VtkViewer();
 
-  VtkViewer &operator=(const VtkViewer &vtkViewer);
+    VtkViewer(const VtkViewer& vtkViewer);
+
+    VtkViewer(VtkViewer&& vtkViewer) noexcept;
+
+    ~VtkViewer();
+
+    VtkViewer& operator=(const VtkViewer& vtkViewer);
+
+    vtkSmartPointer<vtkActor> modelActor;
 
 private:
-  IMGUI_IMPL_API void init();
+    IMGUI_IMPL_API void init();
 
 public:
-  IMGUI_IMPL_API void render();
-  IMGUI_IMPL_API void render(const ImVec2 size);
-  IMGUI_IMPL_API void addActor(const vtkSmartPointer<vtkProp> &actor);
-  IMGUI_IMPL_API void
-  addActors(const vtkSmartPointer<vtkPropCollection> &actors);
-  IMGUI_IMPL_API void removeActor(const vtkSmartPointer<vtkProp> &actor);
-  void setViewportSize(const ImVec2 newSize);
+    IMGUI_IMPL_API void render();
+
+    IMGUI_IMPL_API void render(const ImVec2 size);
+
+    IMGUI_IMPL_API void addActor(const vtkSmartPointer<vtkProp>& actor);
+
+    IMGUI_IMPL_API void
+    addActors(const vtkSmartPointer<vtkPropCollection>& actors);
+
+    IMGUI_IMPL_API void removeActor(const vtkSmartPointer<vtkProp>& actor);
+
+    void setViewportSize(const ImVec2 newSize);
 
 public:
-  static inline unsigned int NoScrollFlags() {
-    return ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
-  }
+    static inline unsigned int NoScrollFlags() {
+        return ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
+    }
 
 public:
-  inline void setRenderWindow(
-      const vtkSmartPointer<vtkGenericOpenGLRenderWindow> &renderWindow) {
-    this->renderWindow = renderWindow;
-  }
+    inline void setRenderWindow(
+        const vtkSmartPointer<vtkGenericOpenGLRenderWindow>& renderWindow) {
+        this->renderWindow = renderWindow;
+    }
 
-  inline void setInteractor(
-      const vtkSmartPointer<vtkGenericRenderWindowInteractor> &interactor) {
-    this->interactor = interactor;
-  }
+    inline void setInteractor(
+        const vtkSmartPointer<vtkGenericRenderWindowInteractor>& interactor) {
+        this->interactor = interactor;
+    }
 
-  inline void
-  setInteractorStyle(const vtkSmartPointer<vtkInteractorStyleTrackballCamera>
-                         &interactorStyle) {
-    this->interactorStyle = interactorStyle;
-  }
+    inline void
+    setInteractorStyle(const vtkSmartPointer<vtkInteractorStyleTrackballCamera>
+        & interactorStyle) {
+        this->interactorStyle = interactorStyle;
+    }
 
-  inline void setRenderer(const vtkSmartPointer<vtkRenderer> &renderer) {
-    this->renderer = renderer;
-  }
-
-public:
-  inline vtkSmartPointer<vtkGenericOpenGLRenderWindow> &getRenderWindow() {
-    return renderWindow;
-  }
-
-  inline vtkSmartPointer<vtkGenericRenderWindowInteractor> &getInteractor() {
-    return interactor;
-  }
-
-  inline vtkSmartPointer<vtkInteractorStyleTrackballCamera> &
-  getInteractorStyle() {
-    return interactorStyle;
-  }
-
-  inline vtkSmartPointer<vtkRenderer> &getRenderer() { return renderer; }
+    inline void setRenderer(const vtkSmartPointer<vtkRenderer>& renderer) {
+        this->renderer = renderer;
+    }
 
 public:
-  inline unsigned int getViewportWidth() const { return viewportWidth; }
+    inline vtkSmartPointer<vtkGenericOpenGLRenderWindow>& getRenderWindow() {
+        return renderWindow;
+    }
 
-  inline unsigned int getViewportHeight() const { return viewportHeight; }
+    inline vtkSmartPointer<vtkGenericRenderWindowInteractor>& getInteractor() {
+        return interactor;
+    }
 
-  inline unsigned int getTexture() const { return tex; }
+    inline vtkSmartPointer<vtkInteractorStyleTrackballCamera>&
+    getInteractorStyle() {
+        return interactorStyle;
+    }
+
+    inline vtkSmartPointer<vtkRenderer>& getRenderer() { return renderer; }
+
+public:
+    inline unsigned int getViewportWidth() const { return viewportWidth; }
+
+    inline unsigned int getViewportHeight() const { return viewportHeight; }
+
+    inline unsigned int getTexture() const { return tex; }
 };
