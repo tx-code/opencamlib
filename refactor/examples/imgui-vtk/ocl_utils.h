@@ -722,13 +722,13 @@ inline void DrawBoundingBox(VtkViewer& viewer, const ocl::Bbox& bb) {
 }
 
 // Create an STL Actor from an OCL STLSurf
-vtkSmartPointer<vtkActor> DrawStlSurf(VtkViewer& viewer,
-                                      const ocl::STLSurf& stl, const double color[3] = white);
+void DrawStlSurf(VtkViewer& viewer,
+                 const ocl::STLSurf& stl, const double color[3] = white);
 
 // Create a vtkLookupTable for CCType coloring
 vtkSmartPointer<vtkLookupTable> CreateCCTypeLookupTable(bool forCLPoints = true);
 
 // Draw a point cloud with CCType-based coloring using lookup table
-vtkSmartPointer<vtkActor> DrawCLPointCloudWithLUT(VtkViewer& viewer,
-                                                  const std::vector<ocl::CLPoint>& clpoints,
-                                                  bool forCLPoints = true);
+void DrawCLPointCloudWithLUT(VtkViewer& viewer,
+                             const std::vector<ocl::CLPoint>& clpoints,
+                             bool forCLPoints = true);

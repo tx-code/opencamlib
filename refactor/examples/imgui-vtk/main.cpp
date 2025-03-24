@@ -94,8 +94,6 @@ int main(int argc, char* argv[]) {
 
     // Initialize VtkViewer objects
     VtkViewer camViewer;
-    cylCutter_waterline_demo(camViewer);
-    // ballCutter_adaptivePathDropCutter_demo(camViewer);
 
     // Our state
     bool show_demo_window = false;
@@ -141,10 +139,20 @@ int main(int argc, char* argv[]) {
                 reinterpret_cast<float *>(&clear_color)); // Edit 3 floats representing a color
 
             ImGui::Text("Application average %.3f ms/frame (%.1f FPS)",
-                        1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+            1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+
+            if (ImGui::CollapsingHeader("One shot example",ImGuiTreeNodeFlags_DefaultOpen)) {
+                if (ImGui::Button("CylCutter + Waterline")) {
+                    cylCutter_waterline_demo(camViewer);
+                }
+                if (ImGui::Button("ConeCutter + PathDropCutter")) {
+                    coneCutter_pathDropCutter_demo(camViewer);
+                }
+            }
 
             if (ImGui::TreeNodeEx("WorkPieces", ImGuiTreeNodeFlags_DefaultOpen)) {
                 if (auto model = camViewer.modelActor) {
+                    ImGui::Text(model->GetObjectName().c_str());
                     bool visible = model->GetVisibility();
                     ImGui::Checkbox("Show WorkPiece", &visible);
                     model->SetVisibility(visible);

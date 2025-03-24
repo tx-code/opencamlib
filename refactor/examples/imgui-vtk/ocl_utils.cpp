@@ -1,6 +1,6 @@
 ﻿#include "ocl_utils.h"
 
-vtkSmartPointer<vtkActor> DrawStlSurf(VtkViewer& viewer, const ocl::STLSurf& stl, const double color[3]) {
+void DrawStlSurf(VtkViewer& viewer, const ocl::STLSurf& stl, const double color[3]) {
     vtkNew<vtkPoints> points;
     vtkNew<vtkCellArray> triangles;
 
@@ -28,9 +28,9 @@ vtkSmartPointer<vtkActor> DrawStlSurf(VtkViewer& viewer, const ocl::STLSurf& stl
     vtkNew<vtkActor> actor;
     actor->SetMapper(mapper);
     SetActorColor(actor, color);
-    viewer.addActor(actor);
+    actor->SetObjectName(fmt::format("STL Surface(N={})", stl.size()));
 
-    return actor;
+    viewer.addActor(actor, VtkViewer::AT_Model);
 }
 
 vtkSmartPointer<vtkLookupTable> CreateCCTypeLookupTable(bool forCLPoints) {
@@ -56,13 +56,13 @@ vtkSmartPointer<vtkLookupTable> CreateCCTypeLookupTable(bool forCLPoints) {
     return lut;
 }
 
-vtkSmartPointer<vtkActor> DrawCLPointCloudWithLUT(VtkViewer& viewer, const std::vector<ocl::CLPoint>& clpoints,
-                                                  bool forCLPoints) {
+void DrawCLPointCloudWithLUT(VtkViewer& viewer, const std::vector<ocl::CLPoint>& clpoints,
+                             bool forCLPoints) {
     // 创建点集
     vtkNew<vtkPoints> points;
 
     // 遍历所有点，添加到点集中
-    for (const auto &p : clpoints) {
+    for (const auto& p: clpoints) {
         points->InsertNextPoint(p.x, p.y, p.z);
     }
 
@@ -85,8 +85,8 @@ vtkSmartPointer<vtkActor> DrawCLPointCloudWithLUT(VtkViewer& viewer, const std::
     typeValues->SetName("CCType");
 
     // 添加每个点的类型值
-    for (const auto &p : clpoints) {
-        auto *cc = p.cc.load();
+    for (const auto& p: clpoints) {
+        auto* cc = p.cc.load();
         typeValues->InsertNextValue(static_cast<int>(cc->type));
     }
 
@@ -109,7 +109,5 @@ vtkSmartPointer<vtkActor> DrawCLPointCloudWithLUT(VtkViewer& viewer, const std::
     actor->SetMapper(mapper);
     actor->GetProperty()->SetPointSize(5); // 增大点的大小以便更好地可视化
 
-    // 添加到查看器并返回演员对象
-    viewer.addActor(actor);
-    return actor;
+    viewer.addActor(actor, VtkViewer::AT_Operation);
 }

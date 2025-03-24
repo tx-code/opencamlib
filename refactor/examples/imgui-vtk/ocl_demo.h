@@ -142,7 +142,6 @@ void waterline(ocl::STLSurf surface, ocl::MillingCutter* cutter, double z,
         wl.setZ(h);
         wl.run();
         auto loops = wl.getLoops();
-        // printLoops(loops);
         if (viewer) {
             drawLoops(*viewer, loops);
         }
@@ -215,7 +214,7 @@ void ocl_all_algos_demo(VtkViewer& viewer) {
     std::wstring stlPath = L"./stl/gnu_tux_mod.stl";
     ocl::STLReader(stlPath, surface);
     spdlog::info("surface size: {} in {} ms", surface.size(), sw);
-    viewer.modelActor = DrawStlSurf(viewer, surface);
+    DrawStlSurf(viewer, surface);
 
     ocl::CylCutter cylCutter = ocl::CylCutter(0.4, 10);
     ocl::BallCutter ballCutter = ocl::BallCutter(4, 20);
@@ -273,7 +272,7 @@ ocl::STLSurf loadSTLModel(VtkViewer& viewer, const std::wstring& stlPath) {
         "Loading STL model: {} Triangle count: {} Time: {} ms",
         std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(stlPath),
         surface.size(), sw);
-    viewer.modelActor = DrawStlSurf(viewer, surface);
+    DrawStlSurf(viewer, surface);
     return surface;
 }
 

@@ -59,15 +59,18 @@ private:
 public:
     VtkViewer();
 
-    VtkViewer(const VtkViewer& vtkViewer);
-
-    VtkViewer(VtkViewer&& vtkViewer) noexcept;
-
     ~VtkViewer();
 
-    VtkViewer& operator=(const VtkViewer& vtkViewer);
+    enum ActorType {
+        AT_Default,
+        AT_Model,
+        AT_Cutter,
+        AT_Operation
+    };
 
     vtkSmartPointer<vtkActor> modelActor;
+    vtkSmartPointer<vtkActor> cutterActor;
+    vtkSmartPointer<vtkActor> operationActor;
 
 private:
     IMGUI_IMPL_API void init();
@@ -77,10 +80,7 @@ public:
 
     IMGUI_IMPL_API void render(const ImVec2 size);
 
-    IMGUI_IMPL_API void addActor(const vtkSmartPointer<vtkProp>& actor);
-
-    IMGUI_IMPL_API void
-    addActors(const vtkSmartPointer<vtkPropCollection>& actors);
+    IMGUI_IMPL_API void addActor(const vtkSmartPointer<vtkProp>& prop, ActorType type = AT_Default);
 
     IMGUI_IMPL_API void removeActor(const vtkSmartPointer<vtkProp>& actor);
 
