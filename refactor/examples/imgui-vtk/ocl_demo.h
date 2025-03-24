@@ -80,23 +80,24 @@ void drawLoops(VtkViewer &viewer,
   vtkNew<vtkPoints> points;
   // 创建一个vtkCellArray对象来存储所有线段
   vtkNew<vtkCellArray> lines;
-  
+
   int pointCount = 0;
-  
+
   // 遍历所有循环
   for (const auto &loop : loops) {
     int loopSize = loop.size();
-    if (loopSize < 2) continue; // 至少需要两个点才能形成线段
-    
+    if (loopSize < 2)
+      continue; // 至少需要两个点才能形成线段
+
     // 记录该循环的起始点索引
     int startPointId = pointCount;
-    
+
     // 添加该循环的所有点
     for (const auto &p : loop) {
       points->InsertNextPoint(p.x, p.y, p.z);
       pointCount++;
     }
-    
+
     // 创建该循环的线段
     for (int i = 0; i < loopSize; i++) {
       vtkNew<vtkLine> line;
@@ -105,27 +106,28 @@ void drawLoops(VtkViewer &viewer,
       lines->InsertNextCell(line);
     }
   }
-  
-  if (pointCount == 0) return; // 如果没有点，则直接返回
-  
+
+  if (pointCount == 0)
+    return; // 如果没有点，则直接返回
+
   // 创建vtkPolyData对象并设置点和线
   vtkNew<vtkPolyData> polyData;
   polyData->SetPoints(points);
   polyData->SetLines(lines);
-  
+
   // 创建mapper并设置输入数据
   vtkNew<vtkPolyDataMapper> mapper;
   mapper->SetInputData(polyData);
-  
+
   // 创建actor并设置mapper
   vtkNew<vtkActor> actor;
   actor->SetMapper(mapper);
   SetActorColor(actor, yellow);
-  
+
   // 添加actor到viewer
   viewer.addActor(actor);
-  
-  spdlog::info("Rendered {} loops with total {} points and {} lines", 
+
+  spdlog::info("Rendered {} loops with total {} points and {} lines",
                loops.size(), pointCount, lines->GetNumberOfCells());
 }
 
@@ -278,22 +280,22 @@ ocl::STLSurf loadSTLModel(VtkViewer &viewer, const std::wstring &stlPath) {
 // 创建标准测试路径
 ocl::Path createTestPath() {
   ocl::Path path;
-  
+
   // 设置路径参数
   double ymin = 0;
   double ymax = 12;
-  int Ny = 40;  // y方向的线条数量
-  double dy = (ymax - ymin) / Ny;  // y方向的步进值
-  
+  int Ny = 40;                    // y方向的线条数量
+  double dy = (ymax - ymin) / Ny; // y方向的步进值
+
   // 添加线段到路径中
   for (int n = 0; n < Ny; n++) {
     double y = ymin + n * dy;
-    ocl::Point p1(0, y, 0);   // 线段起点
-    ocl::Point p2(9, y, 0);   // 线段终点
-    ocl::Line l(p1, p2);      // 创建线段对象
-    path.append(l);           // 将线段添加到路径中
+    ocl::Point p1(0, y, 0); // 线段起点
+    ocl::Point p2(9, y, 0); // 线段终点
+    ocl::Line l(p1, p2);    // 创建线段对象
+    path.append(l);         // 将线段添加到路径中
   }
-  
+
   return path;
 }
 
@@ -373,6 +375,7 @@ void ballCutter_adaptivePathDropCutter_demo(VtkViewer &viewer) {
   ocl::Path path = createTestPath();
 
   spdlog::info("Ball Cutter Adaptive PathDropCutter: {}", ballCutter.str());
-  adaptivePathDropCutter(surface, &ballCutter, sampling, minSampling, &path, &viewer);
+  adaptivePathDropCutter(surface, &ballCutter, sampling, minSampling, &path,
+                         &viewer);
   spdlog::info("Adaptive PathDropCutter operation completed in {} ms", sw);
 }

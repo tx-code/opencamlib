@@ -22,7 +22,6 @@
 #include <vtkSmartPointer.h>
 
 // File-Specific Includes
-#include "imgui_vtk_demo.h" // Actor generator for this demo
 #include "ocl_demo.h"
 
 static void glfw_error_callback(int error, const char *description) {
@@ -31,9 +30,6 @@ static void glfw_error_callback(int error, const char *description) {
 
 int main(int argc, char *argv[]) {
   hello_ocl();
-
-  // Setup pipeline
-  auto actor = SetupDemoPipeline();
 
   // Setup window
   glfwSetErrorCallback(glfw_error_callback);
@@ -58,8 +54,9 @@ int main(int argc, char *argv[]) {
 
   // Create window with graphics context
   GLFWwindow *window =
-      glfwCreateWindow(1280, 720, "Dear ImGui VTKViewer Example", NULL, NULL);
-  if (window == NULL) {
+      glfwCreateWindow(1280, 720, "Cam Viewer Example", nullptr, nullptr);
+  if (window == nullptr) {
+    spdlog::error("Failed to create window!");
     return 1;
   }
   glfwMakeContextCurrent(window);
@@ -67,7 +64,7 @@ int main(int argc, char *argv[]) {
 
   // Initialize OpenGL loader
   if (gl3wInit() != 0) {
-    fprintf(stderr, "Failed to initialize OpenGL loader!\n");
+    spdlog::error("Failed to initialize OpenGL loader!");
     return 1;
   }
 
@@ -83,23 +80,25 @@ int main(int argc, char *argv[]) {
   // Setup Dear ImGui style
   ImGui::StyleColorsDark();
 
+  // When viewports are enabled we tweak WindowRounding/WindowBg so platform
+  // windows can look identical to regular ones.
+  ImGuiStyle &style = ImGui::GetStyle();
+  if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
+    style.WindowRounding = 0.0f;
+    style.Colors[ImGuiCol_WindowBg].w = 1.0f;
+  }
+
   // Setup Platform/Renderer backends
   ImGui_ImplGlfw_InitForOpenGL(window, true);
   ImGui_ImplOpenGL3_Init(glsl_version);
 
   // Initialize VtkViewer objects
-  VtkViewer vtkViewer1;
-  cylCutter_waterline_demo(vtkViewer1);
-  // ballCutter_adaptivePathDropCutter_demo(vtkViewer1);
-
-  VtkViewer vtkViewer2;
-  vtkViewer2.getRenderer()->SetBackground(0, 0, 0); // Black background
-  vtkViewer2.addActor(actor);
+  VtkViewer camViewer;
+  cylCutter_waterline_demo(camViewer);
+  // ballCutter_adaptivePathDropCutter_demo(camViewer);
 
   // Our state
-  bool show_demo_window = true;
-  bool show_another_window = false;
-  bool vtk_2_open = true;
+  bool show_demo_window = false;
   ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
   // Main loop
@@ -114,6 +113,10 @@ int main(int argc, char *argv[]) {
     // to dear imgui, and hide them from your application based on those two
     // flags.
     glfwPollEvents();
+    // if (glfwGetWindowAttrib(window, GLFW_ICONIFIED) != 0) {
+    //   ImGui_ImplGlfw_Sleep(10);
+    //   continue;
+    // }
 
     // Start the Dear ImGui frame
     ImGui_ImplOpenGL3_NewFrame();
@@ -140,8 +143,6 @@ int main(int argc, char *argv[]) {
       ImGui::Checkbox(
           "Demo Window",
           &show_demo_window); // Edit bools storing our window open/close state
-      ImGui::Checkbox("Another Window", &show_another_window);
-      ImGui::Checkbox("VTK Viewer #2", &vtk_2_open);
 
       ImGui::SliderFloat("float", &f, 0.0f,
                          1.0f); // Edit 1 float using a slider from 0.0f to 1.0f
@@ -162,68 +163,19 @@ int main(int argc, char *argv[]) {
     }
     ImGui::End();
 
-    // 3. Show another simple window.
-    if (show_another_window) {
-      ImGui::Begin(
-          "Another Window",
-          &show_another_window); // Pass a pointer to our bool variable (the
-                                 // window will have a closing button that will
-                                 // clear the bool when clicked)
-      ImGui::Text("Hello from another window!");
-      if (ImGui::Button("Close Me")) {
-        show_another_window = false;
-      }
-      ImGui::End();
-    }
-
     // 4. Show a simple VtkViewer Instance (Always Open)
     ImGui::SetNextWindowSize(ImVec2(360, 240), ImGuiCond_FirstUseEver);
-    ImGui::Begin("Vtk Viewer 1", nullptr, VtkViewer::NoScrollFlags());
-    vtkViewer1.render(); // default render size = ImGui::GetContentRegionAvail()
+    ImGui::Begin("Cam Viewer", nullptr, VtkViewer::NoScrollFlags());
+    camViewer.render(); // default render size = ImGui::GetContentRegionAvail()
     ImGui::End();
-
-    // 5. Show a more complex VtkViewer Instance (Closable, Widgets in Window)
-    ImGui::SetNextWindowSize(ImVec2(720, 480), ImGuiCond_FirstUseEver);
-    if (vtk_2_open) {
-      ImGui::Begin("Vtk Viewer 2", &vtk_2_open, VtkViewer::NoScrollFlags());
-
-      // Other widgets can be placed in the same window as the VTKViewer
-      // However, since the VTKViewer is rendered to size
-      // ImGui::GetContentRegionAvail(), it is best to put all widgets first
-      // (i.e., render the VTKViewer last). If you want the VTKViewer to be at
-      // the top of a window, you can manually calculate and define its size,
-      // accounting for the space taken up by other widgets
-
-      auto renderer = vtkViewer2.getRenderer();
-      if (ImGui::Button("VTK Background: Black")) {
-        renderer->SetBackground(0, 0, 0);
-      }
-      ImGui::SameLine();
-      if (ImGui::Button("VTK Background: Red")) {
-        renderer->SetBackground(1, 0, 0);
-      }
-      ImGui::SameLine();
-      if (ImGui::Button("VTK Background: Green")) {
-        renderer->SetBackground(0, 1, 0);
-      }
-      ImGui::SameLine();
-      if (ImGui::Button("VTK Background: Blue")) {
-        renderer->SetBackground(0, 0, 1);
-      }
-      static float vtk2BkgAlpha = 0.2f;
-      ImGui::SliderFloat("Background Alpha", &vtk2BkgAlpha, 0.0f, 1.0f);
-      renderer->SetBackgroundAlpha(vtk2BkgAlpha);
-
-      vtkViewer2.render();
-
-      ImGui::End();
-    }
 
     ImGui::Render();
 
     int display_w, display_h;
     glfwGetFramebufferSize(window, &display_w, &display_h);
     glViewport(0, 0, display_w, display_h);
+    glClearColor(clear_color.x * clear_color.w, clear_color.y * clear_color.w,
+                 clear_color.z * clear_color.w, clear_color.w);
     glClear(GL_COLOR_BUFFER_BIT);
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
