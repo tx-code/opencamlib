@@ -74,97 +74,87 @@ void printLoops(std::vector<std::vector<ocl::Point>> loops) {
     }
 }
 
-void drawLoops(VtkViewer& viewer,
-               const std::vector<std::vector<ocl::Point>>& loops) {
-    // 创建一个vtkPoints对象来存储所有点
-    vtkNew<vtkPoints> points;
-    // 创建一个vtkCellArray对象来存储所有线段
-    vtkNew<vtkCellArray> lines;
-
-    int pointCount = 0;
-
-    // 遍历所有循环
-    for (const auto& loop: loops) {
-        int loopSize = loop.size();
-        if (loopSize < 2)
-            continue; // 至少需要两个点才能形成线段
-
-        // 记录该循环的起始点索引
-        int startPointId = pointCount;
-
-        // 添加该循环的所有点
-        for (const auto& p: loop) {
-            points->InsertNextPoint(p.x, p.y, p.z);
-            pointCount++;
-        }
-
-        // 创建该循环的线段
-        for (int i = 0; i < loopSize; i++) {
-            vtkNew<vtkLine> line;
-            line->GetPointIds()->SetId(0, startPointId + i);
-            line->GetPointIds()->SetId(1, startPointId + (i + 1) % loopSize);
-            lines->InsertNextCell(line);
-        }
-    }
-
-    if (pointCount == 0)
-        return; // 如果没有点，则直接返回
-
-    // 创建vtkPolyData对象并设置点和线
-    vtkNew<vtkPolyData> polyData;
-    polyData->SetPoints(points);
-    polyData->SetLines(lines);
-
-    // 创建mapper并设置输入数据
-    vtkNew<vtkPolyDataMapper> mapper;
-    mapper->SetInputData(polyData);
-
-    // 创建actor并设置mapper
-    vtkNew<vtkActor> actor;
-    actor->SetMapper(mapper);
-    SetActorColor(actor, yellow);
-
-    // 添加actor到viewer
-    viewer.addActor(actor);
-
-    spdlog::info("Rendered {} loops with total {} points and {} lines",
-                 loops.size(), pointCount, lines->GetNumberOfCells());
-}
-
-void waterline(ocl::STLSurf surface, ocl::MillingCutter* cutter, double z,
-               double sampling, VtkViewer* viewer = nullptr) {
+void waterline(const ocl::STLSurf& surface, ocl::MillingCutter* cutter, double z,
+               double sampling, VtkViewer* viewer = nullptr,
+               double lift_step = 0.1, double lift_from = 0.0,
+               bool verbose = false) {
     ocl::Waterline wl = ocl::Waterline();
     wl.setSTL(surface);
     wl.setCutter(cutter);
     wl.setSampling(sampling);
-    for (double h = 0; h < z; h = h + 0.1) {
+
+    spdlog::info("Waterline lifting from {} to {} with step {}", lift_from, z,
+                 lift_step);
+
+    using loop_type = decltype(wl.getLoops());
+    std::vector<loop_type> all_loops;
+    spdlog::stopwatch sw;
+
+    for (double h = lift_from; h <= z; h += lift_step) {
         wl.reset();
         wl.setZ(h);
         wl.run();
         auto loops = wl.getLoops();
-        if (viewer) {
-            drawLoops(*viewer, loops);
+        if (verbose) {
+            spdlog::info("Got {} loops at height {:.3f}", loops.size(), h);
         }
+        all_loops.emplace_back(std::move(loops));
+    }
+
+    if (verbose) {
+        spdlog::info("Generated {} layers of loops in {:.2f} ms", all_loops.size(),
+                     sw);
+    }
+
+    if (viewer) {
+        DrawAllLoops(*viewer, all_loops);
     }
 }
 
-void adaptiveWaterline(ocl::STLSurf surface, ocl::MillingCutter* cutter,
-                       double z, double sampling, double minSampling) {
+void adaptiveWaterline(const ocl::STLSurf& surface, ocl::MillingCutter* cutter,
+                       double z, double sampling, double minSampling,
+                       VtkViewer* viewer = nullptr, double lift_step = 0.1,
+                       double lift_from = 0.0, bool verbose = false) {
     ocl::AdaptiveWaterline awl = ocl::AdaptiveWaterline();
     awl.setSTL(surface);
     awl.setCutter(cutter);
     awl.setSampling(sampling);
     awl.setMinSampling(minSampling);
-    for (double h = 0; h < z; h = h + 0.1) {
+
+    spdlog::info("Adaptive Waterline lifting from {} to {} with step {}",
+                 lift_from, z, lift_step);
+
+    using loop_type = decltype(awl.getLoops());
+    std::vector<loop_type> all_loops;
+    spdlog::stopwatch sw;
+
+    for (double h = lift_from; h <= z; h += lift_step) {
         awl.reset();
         awl.setZ(h);
         awl.run();
         auto loops = awl.getLoops();
-        printLoops(loops);
+        if (verbose) {
+            spdlog::info("Got {} adaptive loops at height {:.3f}", loops.size(), h);
+        }
+        all_loops.emplace_back(std::move(loops));
+    }
+
+    if (verbose) {
+        spdlog::info("Generated {} layers of adaptive loops in {:.2f} ms",
+                     all_loops.size(), sw);
+    }
+
+    if (viewer) {
+        DrawAllLoops(*viewer, all_loops);
+    } else {
+        // 如果没有查看器，则打印输出
+        for (const auto& loops: all_loops) {
+            printLoops(loops);
+        }
     }
 }
 
-void pathDropCutter(ocl::STLSurf surface, ocl::MillingCutter* cutter,
+void pathDropCutter(const ocl::STLSurf& surface, ocl::MillingCutter* cutter,
                     double sampling, ocl::Path* path,
                     VtkViewer* viewer = nullptr) {
     ocl::PathDropCutter pdc = ocl::PathDropCutter();
@@ -185,7 +175,7 @@ void pathDropCutter(ocl::STLSurf surface, ocl::MillingCutter* cutter,
     }
 }
 
-void adaptivePathDropCutter(ocl::STLSurf surface, ocl::MillingCutter* cutter,
+void adaptivePathDropCutter(const ocl::STLSurf& surface, ocl::MillingCutter* cutter,
                             double sampling, double minSampling,
                             ocl::Path* path, VtkViewer* viewer = nullptr) {
     spdlog::stopwatch sw;
@@ -307,12 +297,16 @@ void cylCutter_waterline_demo(VtkViewer& viewer) {
 
     ocl::CylCutter cylCutter = ocl::CylCutter(0.4, 10);
     DrawCylCutter(viewer, cylCutter, ocl::Point(0, 0, 0));
-    // double z = 0.5;
     double z = height;
     double sampling = 0.1;
+    // 自定义步长和起始高度，以获取更精细的结果
+    double lift_step = 0.2; // 更大的步长，减少层数
+    double lift_from = 0.0;
 
     spdlog::info("Cylindrical Cutter Waterline: {}", cylCutter.str());
-    waterline(surface, &cylCutter, z, sampling, &viewer);
+    // 使用新的waterline函数参数
+    waterline(surface, &cylCutter, z, sampling, &viewer, lift_step, lift_from,
+              true);
     spdlog::info("Waterline operation completed in {} ms", sw);
 }
 
@@ -321,29 +315,42 @@ void ballCutter_waterline_demo(VtkViewer& viewer) {
     spdlog::stopwatch sw;
     std::wstring stlPath = L"./stl/gnu_tux_mod.stl";
     ocl::STLSurf surface = loadSTLModel(viewer, stlPath);
+    auto height = surface.bb.maxpt.z - surface.bb.minpt.z;
 
     ocl::BallCutter ballCutter = ocl::BallCutter(4, 20);
-    double z = 0.5;
+    DrawBallCutter(viewer, ballCutter, ocl::Point(0, 0, 0));
+    double z = height / 2; // 使用一半高度
     double sampling = 0.1;
+    // 自定义步长和起始高度
+    double lift_step = 0.15;
+    double lift_from = 0.0;
 
     spdlog::info("Ball Cutter Waterline: {}", ballCutter.str());
-    waterline(surface, &ballCutter, z, sampling);
+    // 使用新的waterline函数参数，包括查看器
+    waterline(surface, &ballCutter, z, sampling, &viewer, lift_step, lift_from,
+              true);
     spdlog::info("Waterline operation completed in {} ms", sw);
 }
 
-// 牛头铣刀自适应水平等高线切削演示
-void bullCutter_adaptiveWaterline_demo(VtkViewer& viewer) {
+// 圆柱铣刀自适应水平等高线切削演示
+void cylCutter_adaptiveWaterline_demo(VtkViewer& viewer) {
     spdlog::stopwatch sw;
     std::wstring stlPath = L"./stl/gnu_tux_mod.stl";
     ocl::STLSurf surface = loadSTLModel(viewer, stlPath);
+    auto height = surface.bb.maxpt.z - surface.bb.minpt.z;
 
-    ocl::BullCutter bullCutter = ocl::BullCutter(4, 0.05, 20);
-    double z = 0.5;
+    ocl::CylCutter cylCutter = ocl::CylCutter(0.4, 10);
+    double z = height;
     double sampling = 0.1;
     double minSampling = 0.01;
+    // 自定义步长和起始高度
+    double lift_step = 0.2; // 较大的步长
+    double lift_from = 0.0;
 
-    spdlog::info("Bull Cutter Adaptive Waterline: {}", bullCutter.str());
-    adaptiveWaterline(surface, &bullCutter, z, sampling, minSampling);
+    spdlog::info("Cyl Cutter Adaptive Waterline: {}", cylCutter.str());
+    // 使用新的adaptiveWaterline函数参数
+    adaptiveWaterline(surface, &cylCutter, z, sampling, minSampling, &viewer,
+                      lift_step, lift_from, true);
     spdlog::info("Adaptive waterline operation completed in {} ms", sw);
 }
 

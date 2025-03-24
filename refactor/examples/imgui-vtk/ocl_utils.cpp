@@ -111,3 +111,94 @@ void DrawCLPointCloudWithLUT(VtkViewer& viewer, const std::vector<ocl::CLPoint>&
 
     viewer.addActor(actor, VtkViewer::AT_Operation);
 }
+
+void DrawAllLoops(VtkViewer& viewer, const std::vector<std::vector<std::vector<ocl::Point>>>& all_loops) {
+    // 创建一个vtkPoints对象来存储所有点
+    vtkNew<vtkPoints> points;
+    // 创建一个vtkCellArray对象来存储所有线段
+    vtkNew<vtkCellArray> lines;
+    // 创建颜色数组
+    vtkNew<vtkUnsignedCharArray> colors;
+    colors->SetNumberOfComponents(3);
+    colors->SetName("Colors");
+
+    int pointCount = 0;
+    int totalLoops = 0;
+
+    // 准备一个颜色表，为每层提供不同颜色
+    vtkNew<vtkLookupTable> lut;
+    lut->SetHueRange(0.0, 0.667); // 红色到蓝色的色调范围
+    lut->SetSaturationRange(0.8, 0.8);
+    lut->SetValueRange(0.8, 0.8);
+    lut->SetNumberOfTableValues(all_loops.size() > 0 ? all_loops.size() : 1);
+    lut->Build();
+
+    // 遍历所有层级
+    for (size_t layer_idx = 0; layer_idx < all_loops.size(); layer_idx++) {
+        const auto& layer_loops = all_loops[layer_idx];
+
+        // 获取该层的颜色
+        double color[3];
+        lut->GetColor(static_cast<double>(layer_idx) /
+                      (all_loops.size() > 1 ? all_loops.size() - 1 : 1),
+                      color);
+        unsigned char colorUC[3];
+        for (int i = 0; i < 3; i++) {
+            colorUC[i] = static_cast<unsigned char>(color[i] * 255.0);
+        }
+
+        // 遍历该层级的所有循环
+        for (const auto& loop: layer_loops) {
+            int loopSize = loop.size();
+            if (loopSize < 2) {
+                continue; // 至少需要两个点才能形成线段
+            }
+
+            // 记录该循环的起始点索引
+            int startPointId = pointCount;
+
+            // 添加该循环的所有点
+            for (const auto& p: loop) {
+                points->InsertNextPoint(p.x, p.y, p.z);
+                pointCount++;
+            }
+
+            // 创建该循环的线段并设置颜色
+            for (int i = 0; i < loopSize; i++) {
+                vtkNew<vtkLine> line;
+                line->GetPointIds()->SetId(0, startPointId + i);
+                line->GetPointIds()->SetId(1, startPointId + (i + 1) % loopSize);
+                lines->InsertNextCell(line);
+
+                // 为每条线段添加颜色
+                colors->InsertNextTypedTuple(colorUC);
+            }
+
+            totalLoops++;
+        }
+    }
+
+    if (pointCount == 0)
+        return; // 如果没有点，则直接返回
+
+    // 创建vtkPolyData对象并设置点和线
+    vtkNew<vtkPolyData> polyData;
+    polyData->SetPoints(points);
+    polyData->SetLines(lines);
+    polyData->GetCellData()->SetScalars(colors);
+
+    // 创建mapper并设置输入数据
+    vtkNew<vtkPolyDataMapper> mapper;
+    mapper->SetInputData(polyData);
+
+    // 创建actor并设置mapper
+    vtkNew<vtkActor> actor;
+    actor->SetMapper(mapper);
+
+    // 添加actor到viewer
+    viewer.addActor(actor, VtkViewer::AT_Operation);
+
+    spdlog::info(
+        "Rendered {} loops across {} layers with total {} points and {} lines",
+        totalLoops, all_loops.size(), pointCount, lines->GetNumberOfCells());
+}

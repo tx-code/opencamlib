@@ -145,6 +145,9 @@ int main(int argc, char* argv[]) {
                 if (ImGui::Button("CylCutter + Waterline")) {
                     cylCutter_waterline_demo(camViewer);
                 }
+                if(ImGui::Button("CylCutter + Adaptive Waterline")) {
+                    cylCutter_adaptiveWaterline_demo(camViewer);
+                }
                 if (ImGui::Button("ConeCutter + PathDropCutter")) {
                     coneCutter_pathDropCutter_demo(camViewer);
                 }

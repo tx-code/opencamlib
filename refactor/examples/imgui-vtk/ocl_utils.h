@@ -732,3 +732,8 @@ vtkSmartPointer<vtkLookupTable> CreateCCTypeLookupTable(bool forCLPoints = true)
 void DrawCLPointCloudWithLUT(VtkViewer& viewer,
                              const std::vector<ocl::CLPoint>& clpoints,
                              bool forCLPoints = true);
+
+// 新增能处理多层loops的函数
+void DrawAllLoops(
+    VtkViewer& viewer,
+    const std::vector<std::vector<std::vector<ocl::Point>>>& all_loops);
