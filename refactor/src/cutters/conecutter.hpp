@@ -47,6 +47,8 @@ public:
   /// string repr
   friend std::ostream &operator<<(std::ostream &stream, ConeCutter c);
   std::string str() const;
+  /// 获取锥体角度（半角，弧度）
+  double getAngle() const;
 
 protected:
   CC_CLZ_Pair singleEdgeDropCanonical(const Point &u1, const Point &u2) const;

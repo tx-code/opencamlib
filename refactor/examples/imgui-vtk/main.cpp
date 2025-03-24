@@ -11,7 +11,9 @@
 #include <GLFW/glfw3.h>
 
 // ImGui + imgui-vtk
+#include <boost/math/constants/constants.hpp>
 #include <codecvt>
+#include <igl/PI.h>
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
@@ -172,6 +174,7 @@ int main(int argc, char *argv[]) {
 
       if (ImGui::CollapsingHeader("CAM example",
                                   ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::SeparatorText("Tools");
         if (ImGui::Button("Load STL")) {
           // First, pop up a dialog to ask the user to select the file
 
@@ -201,6 +204,54 @@ int main(int argc, char *argv[]) {
         }
       }
 
+      static const char *cutter_types[] = {"CylCutter", "BallCutter",
+                                           "BullCutter", "ConeCutter"};
+      static int cutter_type_index = 0;
+      ImGui::Combo("Cutter Types", &cutter_type_index, cutter_types,
+                   IM_ARRAYSIZE(cutter_types));
+
+      static double diameter = 2.0;
+      static double length = 10.0;
+      static double angle =
+          boost::math::constants::half_pi<double>(); // cone cutter need this
+      static double radius = 0.1;                    // bull cutter need this
+      if (cutter_type_index == 0) {
+        ImGui::InputDouble("Diameter", &diameter);
+        ImGui::InputDouble("Length", &length);
+      } else if (cutter_type_index == 1) {
+        ImGui::InputDouble("Diameter", &diameter);
+        ImGui::InputDouble("Length", &length);
+      } else if (cutter_type_index == 2) {
+        ImGui::InputDouble("Diameter", &diameter);
+        ImGui::InputDouble("Length", &length);
+        ImGui::InputDouble("Radius", &radius);
+      } else if (cutter_type_index == 3) {
+        ImGui::InputDouble("Diameter", &diameter);
+        ImGui::InputDouble("Length", &length);
+        ImGui::InputDouble("Angle", &angle);
+      }
+
+      if (ImGui::Button("Change Cutter")) {
+        // According the cutter_type_index, change the cutter type
+        if (cutter_type_index == 0) {
+          camModel.cutter = std::make_unique<ocl::CylCutter>(diameter, length);
+          spdlog::info("CylCutter created: {}", camModel.cutter->str());
+        } else if (cutter_type_index == 1) {
+          camModel.cutter = std::make_unique<ocl::BallCutter>(diameter, length);
+          spdlog::info("BallCutter created: {}", camModel.cutter->str());
+        } else if (cutter_type_index == 2) {
+          camModel.cutter =
+              std::make_unique<ocl::BullCutter>(diameter, radius, length);
+          spdlog::info("BullCutter created: {}", camModel.cutter->str());
+        } else if (cutter_type_index == 3) {
+          camModel.cutter =
+              std::make_unique<ocl::ConeCutter>(diameter, angle, length);
+          spdlog::info("ConeCutter created: {}", camModel.cutter->str());
+        }
+        DrawCutter(camViewer, *camModel.cutter, ocl::Point(0, 0, 0));
+      }
+
+      ImGui::SeparatorText("Data Model");
       if (ImGui::TreeNodeEx("WorkPieces", ImGuiTreeNodeFlags_DefaultOpen)) {
         if (auto model = camViewer.modelActor) {
           ImGui::Text(model->GetObjectName().c_str());

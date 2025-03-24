@@ -29,7 +29,6 @@
 #include "ellipse.hpp"
 #include "millingcutter.hpp"
 
-
 namespace ocl {
 
 /// \brief Bull-nose or Toroidal MillingCutter (filleted endmill)
@@ -46,6 +45,8 @@ public:
   /// string repr
   friend std::ostream &operator<<(std::ostream &stream, BullCutter c);
   std::string str() const;
+  /// 获取圆角半径
+  double getRadius2() const;
 
 protected:
   bool generalEdgePush(const Fiber &f, Interval &i, const Point &p1,
