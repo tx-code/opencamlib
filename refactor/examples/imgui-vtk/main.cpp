@@ -196,54 +196,126 @@ int main(int argc, char *argv[]) {
 
           NFD_Quit();
         }
-      }
 
-      static const char *cutter_types[] = {"CylCutter", "BallCutter",
-                                           "BullCutter", "ConeCutter"};
-      static int cutter_type_index = 0;
-      ImGui::Combo("Cutter Types", &cutter_type_index, cutter_types,
-                   IM_ARRAYSIZE(cutter_types));
+        static const char *cutter_types[] = {"CylCutter", "BallCutter",
+                                             "BullCutter", "ConeCutter"};
+        static int cutter_type_index = 0;
+        ImGui::Combo("Cutter Types", &cutter_type_index, cutter_types,
+                     IM_ARRAYSIZE(cutter_types));
 
-      using namespace boost::math::constants;
-      static double diameter = 2.0;
-      static double length = 10.0;
-      static double angle_in_deg =
-          radian<double>() * third_pi<double>(); // cone cutter need this
-      static double radius = 0.1;                // bull cutter need this
-      if (cutter_type_index == 0) {
-        ImGui::InputDouble("Diameter", &diameter);
-        ImGui::InputDouble("Length", &length);
-      } else if (cutter_type_index == 1) {
-        ImGui::InputDouble("Diameter", &diameter);
-        ImGui::InputDouble("Length", &length);
-      } else if (cutter_type_index == 2) {
-        ImGui::InputDouble("Diameter", &diameter);
-        ImGui::InputDouble("Length", &length);
-        ImGui::InputDouble("Radius", &radius);
-      } else if (cutter_type_index == 3) {
-        ImGui::InputDouble("Diameter", &diameter);
-        ImGui::InputDouble("Length", &length);
-        ImGui::InputDouble("Angle", &angle_in_deg);
-      }
-
-      if (ImGui::Button("Change Cutter")) {
-        // According the cutter_type_index, change the cutter type
+        using namespace boost::math::constants;
+        static double diameter = 2.0;
+        static double length = 10.0;
+        static double angle_in_deg =
+            radian<double>() * third_pi<double>(); // cone cutter need this
+        static double radius = 0.1;                // bull cutter need this
         if (cutter_type_index == 0) {
-          camModel.cutter = std::make_unique<ocl::CylCutter>(diameter, length);
-          spdlog::info("CylCutter created: {}", camModel.cutter->str());
+          ImGui::InputDouble("Diameter", &diameter);
+          ImGui::InputDouble("Length", &length);
         } else if (cutter_type_index == 1) {
-          camModel.cutter = std::make_unique<ocl::BallCutter>(diameter, length);
-          spdlog::info("BallCutter created: {}", camModel.cutter->str());
+          ImGui::InputDouble("Diameter", &diameter);
+          ImGui::InputDouble("Length", &length);
         } else if (cutter_type_index == 2) {
-          camModel.cutter =
-              std::make_unique<ocl::BullCutter>(diameter, radius, length);
-          spdlog::info("BullCutter created: {}", camModel.cutter->str());
+          ImGui::InputDouble("Diameter", &diameter);
+          ImGui::InputDouble("Length", &length);
+          ImGui::InputDouble("Radius", &radius);
         } else if (cutter_type_index == 3) {
-          camModel.cutter = std::make_unique<ocl::ConeCutter>(
-              diameter, degree<double>() * angle_in_deg, length);
-          spdlog::info("ConeCutter created: {}", camModel.cutter->str());
+          ImGui::InputDouble("Diameter", &diameter);
+          ImGui::InputDouble("Length", &length);
+          ImGui::InputDouble("Angle", &angle_in_deg);
         }
-        DrawCutter(camViewer, *camModel.cutter, ocl::Point(0, 0, 0));
+
+        if (ImGui::Button("Change Cutter")) {
+          // According the cutter_type_index, change the cutter type
+          if (cutter_type_index == 0) {
+            camModel.cutter =
+                std::make_unique<ocl::CylCutter>(diameter, length);
+            spdlog::info("CylCutter created: {}", camModel.cutter->str());
+          } else if (cutter_type_index == 1) {
+            camModel.cutter =
+                std::make_unique<ocl::BallCutter>(diameter, length);
+            spdlog::info("BallCutter created: {}", camModel.cutter->str());
+          } else if (cutter_type_index == 2) {
+            camModel.cutter =
+                std::make_unique<ocl::BullCutter>(diameter, radius, length);
+            spdlog::info("BullCutter created: {}", camModel.cutter->str());
+          } else if (cutter_type_index == 3) {
+            camModel.cutter = std::make_unique<ocl::ConeCutter>(
+                diameter, degree<double>() * angle_in_deg, length);
+            spdlog::info("ConeCutter created: {}", camModel.cutter->str());
+          }
+          DrawCutter(camViewer, *camModel.cutter, ocl::Point(0, 0, 0));
+        }
+
+        static const char *op_types[] = {"WaterLine", "AdaptiveWaterLine",
+                                         "PathDropCutter", "GridDropCutter"};
+        static int op_type_index = 0;
+        ImGui::Combo("Operation Types", &op_type_index, op_types,
+                     IM_ARRAYSIZE(op_types));
+
+        static double sampling = 0.1;
+        static double min_sampling = 0.01; // adaptive waterline need this
+        static double lift_step = 0.1;
+        static double lift_from = 0.0;
+        static double lift_to = 1;
+
+        switch (op_type_index) {
+        case 0:
+          ImGui::InputDouble("Sampling", &sampling);
+          ImGui::InputDouble("Lift Step", &lift_step);
+          ImGui::InputDouble("Lift From", &lift_from);
+          ImGui::InputDouble("Lift To", &lift_to);
+          break;
+        case 1:
+          ImGui::InputDouble("Sampling", &sampling);
+          ImGui::InputDouble("Min Sampling", &min_sampling);
+          ImGui::InputDouble("Lift Step", &lift_step);
+          ImGui::InputDouble("Lift From", &lift_from);
+          ImGui::InputDouble("Lift To", &lift_to);
+          break;
+        case 2:
+          break;
+        case 3:
+          break;
+        default:
+          break;
+        }
+
+        if (ImGui::Button("Run Operation")) {
+          if (camModel.cutter && camModel.surface) {
+
+            switch (op_type_index) {
+            case 0:
+              waterline(camModel, lift_to, sampling, &camViewer, lift_step,
+                        lift_from);
+              break;
+            case 1:
+              adaptiveWaterline(camModel, lift_to, sampling, min_sampling,
+                                &camViewer, lift_step, lift_from);
+              break;
+            case 2:
+              /* code */
+              break;
+            }
+          } else {
+            ImGui::OpenPopup("No Cutter or Surface");
+
+            // Always center this window when appearing
+            auto center = ImGui::GetMainViewport()->GetCenter();
+            ImGui::SetNextWindowPos(center, ImGuiCond_Appearing,
+                                    ImVec2(0.5f, 0.5f));
+          }
+        }
+
+        if (ImGui::BeginPopupModal("No Cutter or Surface", nullptr,
+                                   ImGuiWindowFlags_AlwaysAutoResize)) {
+          ImGui::Text("Please select a cutter and a surface");
+          ImGui::SetItemDefaultFocus();
+          if (ImGui::Button("OK", ImVec2(120, 0))) {
+            ImGui::CloseCurrentPopup();
+          }
+          ImGui::EndPopup();
+        }
       }
 
       ImGui::SeparatorText("Data Model");
@@ -285,7 +357,7 @@ int main(int argc, char *argv[]) {
         ImGui::TreePop();
       }
 
-      if (ImGui::TreeNode("Cutters", ImGuiTreeNodeFlags_DefaultOpen)) {
+      if (ImGui::TreeNodeEx("Cutters", ImGuiTreeNodeFlags_DefaultOpen)) {
         if (auto cutter = camViewer.cutterActor) {
           ImGui::Text(cutter->GetObjectName().c_str());
           bool visible = cutter->GetVisibility();

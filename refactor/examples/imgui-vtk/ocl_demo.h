@@ -28,6 +28,91 @@ struct CAM_DataModel {
   std::unique_ptr<ocl::Operation> operation;
 };
 
+void waterline(CAM_DataModel &model, double z, double sampling,
+               VtkViewer *viewer = nullptr, double lift_step = 0.1,
+               double lift_from = 0.0, bool verbose = true) {
+  if (!model.cutter || !model.surface) {
+    spdlog::error("No cutter or surface");
+    return;
+  }
+
+  model.operation = std::make_unique<ocl::Waterline>();
+  auto &wl = *static_cast<ocl::Waterline *>(model.operation.get());
+  wl.setSTL(*model.surface);
+  wl.setCutter(model.cutter.get());
+  wl.setSampling(sampling);
+
+  spdlog::info("Waterline lifting from {} to {} with step {}", lift_from, z,
+               lift_step);
+
+  using loop_type = decltype(wl.getLoops());
+  std::vector<loop_type> all_loops;
+  spdlog::stopwatch sw;
+
+  for (double h = lift_from; h <= z; h += lift_step) {
+    wl.reset();
+    wl.setZ(h);
+    wl.run();
+    auto loops = wl.getLoops();
+    if (verbose) {
+      spdlog::info("Got {} loops at height {:.3f}", loops.size(), h);
+    }
+    all_loops.emplace_back(std::move(loops));
+  }
+
+  if (verbose) {
+    spdlog::info("Generated {} layers of loops in {:.2f} ms", all_loops.size(),
+                 sw);
+  }
+
+  if (viewer) {
+    DrawAllLoops(*viewer, all_loops);
+  }
+}
+
+void adaptiveWaterline(CAM_DataModel &model, double z, double sampling,
+                       double minSampling, VtkViewer *viewer = nullptr,
+                       double lift_step = 0.1, double lift_from = 0.0,
+                       bool verbose = true) {
+  if (!model.cutter || !model.surface) {
+    spdlog::error("No cutter or surface");
+    return;
+  }
+  model.operation = std::make_unique<ocl::AdaptiveWaterline>();
+  auto &awl = *static_cast<ocl::AdaptiveWaterline *>(model.operation.get());
+  awl.setSTL(*model.surface);
+  awl.setCutter(model.cutter.get());
+  awl.setSampling(sampling);
+  awl.setMinSampling(minSampling);
+
+  spdlog::info("Adaptive Waterline lifting from {} to {} with step {}",
+               lift_from, z, lift_step);
+
+  using loop_type = decltype(awl.getLoops());
+  std::vector<loop_type> all_loops;
+  spdlog::stopwatch sw;
+
+  for (double h = lift_from; h <= z; h += lift_step) {
+    awl.reset();
+    awl.setZ(h);
+    awl.run();
+    auto loops = awl.getLoops();
+    if (verbose) {
+      spdlog::info("Got {} adaptive loops at height {:.3f}", loops.size(), h);
+    }
+    all_loops.emplace_back(std::move(loops));
+  }
+
+  if (verbose) {
+    spdlog::info("Generated {} layers of adaptive loops in {:.2f} ms",
+                 all_loops.size(), sw);
+  }
+
+  if (viewer) {
+    DrawAllLoops(*viewer, all_loops);
+  }
+}
+
 void hello_ocl() {
   spdlog::info("ocl version: {}", ocl::version());
   spdlog::info("max threads: {}", ocl::max_threads());
