@@ -280,7 +280,22 @@ int main(int argc, char *argv[]) {
       }
 
       if (ImGui::TreeNode("Cutters")) {
-        // TODO Cutters related controls
+        if (auto cutter = camViewer.cutterActor) {
+          ImGui::Text(cutter->GetObjectName().c_str());
+          bool visible = cutter->GetVisibility();
+          ImGui::Checkbox("Show Cutter", &visible);
+          cutter->SetVisibility(visible);
+
+          int representation = cutter->GetProperty()->GetRepresentation();
+          std::array<bool, 2> touched;
+          touched[0] = ImGui::RadioButton("Wireframe", &representation, 1);
+          ImGui::SameLine();
+          touched[1] = ImGui::RadioButton("Surface", &representation, 2);
+          if (std::find(touched.begin(), touched.end(), true) !=
+              touched.end()) {
+            cutter->GetProperty()->SetRepresentation(representation);
+          }
+        }
         ImGui::TreePop();
       }
 

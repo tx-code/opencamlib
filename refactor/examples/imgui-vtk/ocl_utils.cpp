@@ -26,6 +26,7 @@ inline vtkSmartPointer<vtkActor> DrawCylCutter(VtkViewer &viewer,
   actor->SetMapper(mapper);
   actor->GetProperty()->SetColor(red[0], red[1], red[2]);
   actor->RotateX(-90);
+  actor->SetObjectName(cutter.str());
   SetActorWireframe(actor);
 
   viewer.addActor(actor, VtkViewer::AT_Cutter);
@@ -72,6 +73,7 @@ inline vtkSmartPointer<vtkActor> DrawBallCutter(VtkViewer &viewer,
   actor->SetMapper(mapper);
   actor->RotateX(-90);
   actor->GetProperty()->SetColor(yellow[0], yellow[1], yellow[2]);
+  actor->SetObjectName(cutter.str());
   SetActorWireframe(actor);
 
   viewer.addActor(actor, VtkViewer::AT_Cutter);
@@ -142,6 +144,7 @@ inline vtkSmartPointer<vtkActor> DrawBullCutter(VtkViewer &viewer,
   vtkNew<vtkActor> actor;
   actor->SetMapper(mapper);
   actor->GetProperty()->SetColor(green[0], green[1], green[2]);
+  actor->SetObjectName(cutter.str());
   SetActorWireframe(actor);
 
   viewer.addActor(actor, VtkViewer::AT_Cutter);
@@ -191,6 +194,7 @@ inline vtkSmartPointer<vtkActor> DrawConeCutter(VtkViewer &viewer,
   actor->SetMapper(mapper);
   actor->GetProperty()->SetColor(blue[0], blue[1], blue[2]);
   actor->RotateX(-90);
+  actor->SetObjectName(cutter.str());
   SetActorWireframe(actor);
 
   viewer.addActor(actor, VtkViewer::AT_Cutter);
