@@ -24,6 +24,7 @@
 
 // VTK
 #include <vtkActor.h>
+#include <vtkAxesActor.h>
 #include <vtkSmartPointer.h>
 
 // File-Specific Includes
@@ -327,6 +328,11 @@ int main(int argc, char *argv[]) {
       }
 
       ImGui::SeparatorText("Data Model");
+      bool axesVisible = camViewer.axesActor->GetVisibility();
+      if (ImGui::Checkbox("Show Axes", &axesVisible)) {
+        camViewer.axesActor->SetVisibility(axesVisible);
+      }
+
       if (ImGui::TreeNodeEx("WorkPieces", ImGuiTreeNodeFlags_DefaultOpen)) {
         if (auto model = camViewer.modelActor) {
           ImGui::Text(model->GetObjectName().c_str());

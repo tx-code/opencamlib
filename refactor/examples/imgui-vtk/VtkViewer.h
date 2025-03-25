@@ -19,6 +19,7 @@
 #include <vtkSmartPointer.h>
 
 class vtkCameraOrientationWidget;
+class vtkAxesActor;
 
 // RGB Color in range [0.0, 1.0]
 #define DEFAULT_BACKGROUND 0.39, 0.39, 0.39
@@ -67,6 +68,8 @@ public:
         AT_Cutter,
         AT_Operation
     };
+
+    vtkSmartPointer<vtkAxesActor> axesActor;
 
     vtkSmartPointer<vtkActor> modelActor;
     vtkSmartPointer<vtkActor> cutterActor;
