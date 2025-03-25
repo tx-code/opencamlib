@@ -248,7 +248,8 @@ int main(int argc, char *argv[]) {
         }
 
         static const char *op_types[] = {"WaterLine", "AdaptiveWaterLine",
-                                         "PathDropCutter", "GridDropCutter"};
+                                         "PathDropCutter",
+                                         "AdaptivePathDropCutter"};
         static int op_type_index = 0;
         ImGui::Combo("Operation Types", &op_type_index, op_types,
                      IM_ARRAYSIZE(op_types));
@@ -274,8 +275,11 @@ int main(int argc, char *argv[]) {
           ImGui::InputDouble("Lift To", &lift_to);
           break;
         case 2:
+          ImGui::InputDouble("Sampling", &sampling);
           break;
         case 3:
+          ImGui::InputDouble("Sampling", &sampling);
+          ImGui::InputDouble("Min Sampling", &min_sampling);
           break;
         default:
           break;
@@ -294,7 +298,11 @@ int main(int argc, char *argv[]) {
                                 &camViewer, lift_step, lift_from);
               break;
             case 2:
-              /* code */
+              pathDropCutter(camModel, sampling, &camViewer);
+              break;
+            case 3:
+              adaptivePathDropCutter(camModel, sampling, min_sampling,
+                                     &camViewer);
               break;
             }
           } else {

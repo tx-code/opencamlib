@@ -28,6 +28,33 @@ struct CAM_DataModel {
   std::unique_ptr<ocl::Operation> operation;
 };
 
+// Y-direction zigzag pattern
+// TODO more patterns
+ocl::Path createGuidePath(const ocl::STLSurf &surface) {
+  // Enlarge 5%
+  double x_min = surface.bb.minpt.x;
+  x_min -= 0.05 * x_min;
+  double x_max = surface.bb.maxpt.x;
+  x_max += 0.05 * x_max;
+  double y_min = surface.bb.minpt.y;
+  y_min -= 0.05 * y_min;
+  double y_max = surface.bb.maxpt.y;
+  y_max += 0.05 * y_max;
+  constexpr int NY = 40;
+  double dy = (y_max - y_min) / NY;
+  ocl::Path path;
+  for (int n = 0; n < NY; n++) {
+    double y = y_min + n * dy;
+    ocl::Point p1(x_min, y, 0);
+    ocl::Point p2(x_max, y, 0);
+    ocl::Line l(p1, p2);
+    path.append(l);
+  }
+
+  spdlog::info("Guide path created with {} segments", path.span_list.size());
+  return path;
+}
+
 void waterline(CAM_DataModel &model, double z, double sampling,
                VtkViewer *viewer = nullptr, double lift_step = 0.1,
                double lift_from = 0.0, bool verbose = true) {
@@ -110,6 +137,60 @@ void adaptiveWaterline(CAM_DataModel &model, double z, double sampling,
 
   if (viewer) {
     DrawAllLoops(*viewer, all_loops);
+  }
+}
+
+void pathDropCutter(CAM_DataModel &model, double sampling,
+                    VtkViewer *viewer = nullptr) {
+  if (!model.cutter || !model.surface) {
+    spdlog::error("No cutter or surface");
+    return;
+  }
+  model.operation = std::make_unique<ocl::PathDropCutter>();
+  auto &pdc = *static_cast<ocl::PathDropCutter *>(model.operation.get());
+  spdlog::stopwatch sw;
+  pdc.setSTL(*model.surface);
+  pdc.setCutter(model.cutter.get());
+
+  auto guidePath = createGuidePath(*model.surface);
+  pdc.setPath(&guidePath);
+  pdc.setSampling(sampling);
+  pdc.reset();
+  pdc.setZ(model.surface->bb.minpt.z);
+  pdc.run();
+  auto points = pdc.getPoints();
+  spdlog::info("PDC done in {} ms and got {} points", sw, points.size());
+
+  if (viewer) {
+    DrawCLPointCloudWithLUT(*viewer, points);
+  }
+}
+
+void adaptivePathDropCutter(CAM_DataModel &model, double sampling,
+                            double minSampling, VtkViewer *viewer = nullptr) {
+  if (!model.cutter || !model.surface) {
+    spdlog::error("No cutter or surface");
+    return;
+  }
+  spdlog::stopwatch sw;
+  model.operation = std::make_unique<ocl::AdaptivePathDropCutter>();
+  auto &apdc =
+      *static_cast<ocl::AdaptivePathDropCutter *>(model.operation.get());
+  apdc.setSTL(*model.surface);
+  apdc.setCutter(model.cutter.get());
+
+  auto guidePath = createGuidePath(*model.surface);
+  apdc.setPath(&guidePath);
+  apdc.setSampling(sampling);
+  apdc.setMinSampling(minSampling);
+  apdc.reset();
+  apdc.setZ(model.surface->bb.minpt.z);
+  apdc.run();
+  auto points = apdc.getPoints();
+  spdlog::info("APDC done in {} ms and got {} points", sw, points.size());
+
+  if (viewer) {
+    DrawCLPointCloudWithLUT(*viewer, points);
   }
 }
 
