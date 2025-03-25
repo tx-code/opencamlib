@@ -90,7 +90,7 @@ inline void SetActorOpacity(vtkActor *actor, double op = 0.5) {
 }
 
 inline void SetActorWireframe(vtkActor *actor) {
-  // actor->GetProperty()->SetRepresentationToWireframe();
+  actor->GetProperty()->SetRepresentationToWireframe();
 }
 
 inline void SetActorSurface(vtkActor *actor) {
@@ -686,6 +686,7 @@ inline void DrawBoundingBox(VtkViewer &viewer, const ocl::Bbox &bb) {
   }
 }
 
+// Draw a cutter at a given position
 void DrawCutter(VtkViewer &viewer, const ocl::MillingCutter &cutter,
                 const ocl::Point &p);
 

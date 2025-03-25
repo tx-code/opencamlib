@@ -29,12 +29,6 @@
 // File-Specific Includes
 #include "ocl_demo.h"
 
-struct CAM_DataModel {
-  std::unique_ptr<ocl::STLSurf> surface;
-  std::unique_ptr<ocl::MillingCutter> cutter;
-  std::unique_ptr<ocl::Operation> operation;
-};
-
 static void glfw_error_callback(int error, const char *description) {
   spdlog::error("Glfw Error %d: %s\n", error, description);
 }
@@ -210,11 +204,12 @@ int main(int argc, char *argv[]) {
       ImGui::Combo("Cutter Types", &cutter_type_index, cutter_types,
                    IM_ARRAYSIZE(cutter_types));
 
+      using namespace boost::math::constants;
       static double diameter = 2.0;
       static double length = 10.0;
-      static double angle =
-          boost::math::constants::half_pi<double>(); // cone cutter need this
-      static double radius = 0.1;                    // bull cutter need this
+      static double angle_in_deg =
+          radian<double>() * third_pi<double>(); // cone cutter need this
+      static double radius = 0.1;                // bull cutter need this
       if (cutter_type_index == 0) {
         ImGui::InputDouble("Diameter", &diameter);
         ImGui::InputDouble("Length", &length);
@@ -228,7 +223,7 @@ int main(int argc, char *argv[]) {
       } else if (cutter_type_index == 3) {
         ImGui::InputDouble("Diameter", &diameter);
         ImGui::InputDouble("Length", &length);
-        ImGui::InputDouble("Angle", &angle);
+        ImGui::InputDouble("Angle", &angle_in_deg);
       }
 
       if (ImGui::Button("Change Cutter")) {
@@ -244,8 +239,8 @@ int main(int argc, char *argv[]) {
               std::make_unique<ocl::BullCutter>(diameter, radius, length);
           spdlog::info("BullCutter created: {}", camModel.cutter->str());
         } else if (cutter_type_index == 3) {
-          camModel.cutter =
-              std::make_unique<ocl::ConeCutter>(diameter, angle, length);
+          camModel.cutter = std::make_unique<ocl::ConeCutter>(
+              diameter, degree<double>() * angle_in_deg, length);
           spdlog::info("ConeCutter created: {}", camModel.cutter->str());
         }
         DrawCutter(camViewer, *camModel.cutter, ocl::Point(0, 0, 0));

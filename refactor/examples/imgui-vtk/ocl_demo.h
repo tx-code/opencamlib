@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include <codecvt>
+#include <memory>
 #include <spdlog/spdlog.h>
 #include <spdlog/stopwatch.h>
 
@@ -20,6 +21,12 @@
 #include "geo/stlreader.hpp"
 #include "geo/stlsurf.hpp"
 #include "ocl.hpp"
+
+struct CAM_DataModel {
+  std::unique_ptr<ocl::STLSurf> surface;
+  std::unique_ptr<ocl::MillingCutter> cutter;
+  std::unique_ptr<ocl::Operation> operation;
+};
 
 void hello_ocl() {
   spdlog::info("ocl version: {}", ocl::version());
