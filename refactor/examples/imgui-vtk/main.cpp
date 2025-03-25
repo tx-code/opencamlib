@@ -250,6 +250,12 @@ int main(int argc, char *argv[]) {
       if (ImGui::TreeNodeEx("WorkPieces", ImGuiTreeNodeFlags_DefaultOpen)) {
         if (auto model = camViewer.modelActor) {
           ImGui::Text(model->GetObjectName().c_str());
+
+          // Bbox
+          auto bbox = model->GetBounds();
+          ImGui::Text("Bbox: Min(%.2f, %.2f, %.2f), Max(%.2f, %.2f, %.2f)",
+                      bbox[0], bbox[2], bbox[4], bbox[1], bbox[3], bbox[5]);
+
           bool visible = model->GetVisibility();
           ImGui::Checkbox("Show WorkPiece", &visible);
           model->SetVisibility(visible);
@@ -279,7 +285,7 @@ int main(int argc, char *argv[]) {
         ImGui::TreePop();
       }
 
-      if (ImGui::TreeNode("Cutters")) {
+      if (ImGui::TreeNode("Cutters", ImGuiTreeNodeFlags_DefaultOpen)) {
         if (auto cutter = camViewer.cutterActor) {
           ImGui::Text(cutter->GetObjectName().c_str());
           bool visible = cutter->GetVisibility();
