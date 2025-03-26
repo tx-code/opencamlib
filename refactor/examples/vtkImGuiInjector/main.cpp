@@ -15,12 +15,14 @@
 #include <vtkConeSource.h>
 #include <vtkInteractorStyle.h>
 #include <vtkInteractorStyleSwitch.h>
+#include <vtkInteractorStyleTrackballCamera.h>
 #include <vtkNew.h>
 #include <vtkPolyData.h>
 #include <vtkPolyDataMapper.h>
 #include <vtkRenderWindow.h>
 #include <vtkRenderWindowInteractor.h>
 #include <vtkRenderer.h>
+
 
 
 #include "vtkUtils.h"
@@ -35,6 +37,7 @@ int main(int argc, char* argv[])
     renderWindow->SetMultiSamples(8);
     renderWindow->AddRenderer(renderer);
     iren->SetRenderWindow(renderWindow);
+    iren->SetInteractorStyle(vtkInteractorStyleTrackballCamera::New());
 
     // Start rendering app
     renderer->SetBackground(0.2, 0.3, 0.4);
