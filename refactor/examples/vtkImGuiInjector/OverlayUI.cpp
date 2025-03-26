@@ -261,7 +261,7 @@ void DrawCAMExample(vtkDearImGuiInjector* injector)
     }
 
     if (modelManager.surface) {
-        ImGui::SetNextItemOpen(true);
+        ImGui::SetNextItemOpen(true, ImGuiCond_Once);
     }
     if (ImGui::TreeNode("WorkPieces")) {
         if (modelManager.surface) {
@@ -310,7 +310,7 @@ void DrawCAMExample(vtkDearImGuiInjector* injector)
 
 
     if (modelManager.cutter) {
-        ImGui::SetNextItemOpen(true);
+        ImGui::SetNextItemOpen(true, ImGuiCond_Once);
     }
     if (ImGui::TreeNode("Cutters")) {
         if (modelManager.cutter) {
@@ -336,7 +336,7 @@ void DrawCAMExample(vtkDearImGuiInjector* injector)
     }
 
     if (modelManager.operation) {
-        ImGui::SetNextItemOpen(true);
+        ImGui::SetNextItemOpen(true, ImGuiCond_Once);
     }
     if (ImGui::TreeNode("Operations")) {
         if (modelManager.operation) {
