@@ -7,6 +7,7 @@
 #include "OverlayUI.h"
 #include "vtkDearImGuiInjector.h"
 
+#include <imgui.h>
 #include <vtkActor.h>
 #include <vtkCallbackCommand.h>
 #include <vtkCameraOrientationRepresentation.h>
@@ -20,7 +21,7 @@
 #include <vtkRenderWindow.h>
 #include <vtkRenderWindowInteractor.h>
 #include <vtkRenderer.h>
-#include <imgui.h>
+
 
 #include "vtkUtils.h"
 
@@ -40,13 +41,6 @@ int main(int argc, char* argv[])
     renderWindow->Render();
 
     /// Change to your code begins here. ///
-    vtkActorManager actorManager;
-    // these actors are empty now (like a placeholder)
-    renderer->AddActor(actorManager.modelActor);
-    renderer->AddActor(actorManager.cutterActor);
-    renderer->AddActor(actorManager.legendActor);
-    renderer->AddActor(actorManager.operationActor);
-
     // Initialize an overlay with DearImgui elements.
     vtkNew<vtkDearImGuiInjector> dearImGuiOverlay;
     dearImGuiOverlay->DebugOn();

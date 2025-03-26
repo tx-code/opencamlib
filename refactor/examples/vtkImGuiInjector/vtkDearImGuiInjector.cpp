@@ -15,6 +15,7 @@
 #include <vtkOpenGLRenderWindow.h>
 #include <vtkRenderWindow.h>
 #include <vtkRenderWindowInteractor.h>
+#include <vtkRendererCollection.h>
 #include <vtk_glew.h>
 
 #if defined(GL_ES_VERSION_3_0) && !defined(IMGUI_IMPL_OPENGL_ES3)
@@ -136,6 +137,20 @@ bool vtkDearImGuiInjector::SetUp(vtkRenderWindow* renWin)
         return true;
     }
 
+    // Only get the first renderer
+    auto renderer = renWin->GetRenderers()->GetFirstRenderer();
+    if (!renderer) {
+        vtkErrorMacro(<< "No renderer found in the render window.");
+        return false;
+    }
+
+    renderer->AddActor(this->ActorManager.modelActor);
+    renderer->AddActor(this->ActorManager.cutterActor);
+    renderer->AddActor(this->ActorManager.legendActor);
+    renderer->AddActor(this->ActorManager.operationActor);
+    renderer->AddActor(this->ActorManager.axesActor);
+    renderer->ResetCamera();
+
     ImGuiIO& io = ImGui::GetIO();
     (void)io;
     io.BackendFlags |= ImGuiBackendFlags_HasMouseCursors;  // We can honor GetMouseCursor() values
@@ -239,6 +254,7 @@ void vtkDearImGuiInjector::BeginDearImGuiOverlay(vtkObject* caller,
     if (this->ShowAppAbout) {
         ImGui::ShowAboutWindow(&this->ShowAppAbout);
     }
+
     this->InvokeEvent(ImGuiDrawEvent);
 }
 
@@ -653,5 +669,14 @@ void vtkDearImGuiInjector::InterceptEvent(vtkObject* caller,
         }
         default:
             break;
+    }
+}
+
+//------------------------------------------------------------------------------
+void vtkDearImGuiInjector::ForceResetCamera()
+{
+    // TODO: If we have multiple renderers, we need to reset all of them?
+    if (this->Interactor) {
+        this->Interactor->GetRenderWindow()->GetRenderers()->GetFirstRenderer()->ResetCamera();
     }
 }

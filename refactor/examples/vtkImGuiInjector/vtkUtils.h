@@ -3,6 +3,7 @@
 #include <vtkActor.h>
 #include <vtkArrowSource.h>
 #include <vtkAxes.h>
+#include <vtkAxesActor.h>
 #include <vtkCamera.h>
 #include <vtkCellArray.h>
 #include <vtkCellData.h>
@@ -46,6 +47,7 @@
 #include <vtkVertex.h>
 #include <vtkVertexGlyphFilter.h>
 
+
 #include <cmath>
 #include <memory>
 #include <spdlog/spdlog.h>
@@ -66,6 +68,8 @@ struct vtkActorManager
     vtkSmartPointer<vtkActor> cutterActor {vtkSmartPointer<vtkActor>::New()};
     vtkSmartPointer<vtkActor> operationActor {vtkSmartPointer<vtkActor>::New()};
     vtkSmartPointer<vtkActor> legendActor {vtkSmartPointer<vtkActor>::New()};
+
+    vtkSmartPointer<vtkAxesActor> axesActor {vtkSmartPointer<vtkAxesActor>::New()};
 };
 
 // Common colors

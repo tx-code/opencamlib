@@ -8,6 +8,8 @@
 #include <vtkObject.h>
 #include <vtkWeakPointer.h>
 
+#include "oclUtils.h"
+
 #if __has_include(<vtkXRenderWindowInteractor.h>)
 #define USES_X11 1
 #endif
@@ -41,11 +43,20 @@ public:
     void InstallEventCallback(vtkRenderWindowInteractor* interactor);
     void UninstallEventCallback();
 
+    // Manually reset the camera
+    void ForceResetCamera();
+
     // Observe this event and draw application specific ImGui widgets
     static const unsigned long ImGuiDrawEvent = vtkCommand::UserEvent + 1;
     static const unsigned long ImGuiSetupEvent = vtkCommand::UserEvent + 2;
     static const unsigned long ImGuiTearDownEvent = vtkCommand::UserEvent + 3;
     vtkWeakPointer<vtkRenderWindowInteractor> Interactor;
+
+    // Just for example, we have two managers here.
+    // ActorManager is used to store the actors for the model, cutter, legend, and operation
+    vtkActorManager ActorManager;
+    // ModelManager is used to store the model, cutter, and operation
+    CAMModelManager ModelManager;
 
 protected:
     vtkDearImGuiInjector();
