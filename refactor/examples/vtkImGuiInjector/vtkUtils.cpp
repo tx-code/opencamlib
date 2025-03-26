@@ -394,6 +394,11 @@ void UpdateLoopsActor(vtkSmartPointer<vtkActor>& actor,
     colors->SetNumberOfComponents(3);
     colors->SetName("Colors");
 
+    // 创建顶点的颜色数组
+    vtkNew<vtkUnsignedCharArray> pointColors;
+    pointColors->SetNumberOfComponents(3);
+    pointColors->SetName("PointColors");
+
     int pointCount = 0;
     int totalLoops = 0;
 
@@ -432,6 +437,8 @@ void UpdateLoopsActor(vtkSmartPointer<vtkActor>& actor,
             // 添加该循环的所有点
             for (const auto& p : loop) {
                 points->InsertNextPoint(p.x, p.y, p.z);
+                // 为每个点添加颜色
+                pointColors->InsertNextTypedTuple(colorUC);
                 pointCount++;
             }
 
@@ -453,18 +460,54 @@ void UpdateLoopsActor(vtkSmartPointer<vtkActor>& actor,
     if (pointCount == 0)
         return;  // 如果没有点，则直接返回
 
-    // 创建vtkPolyData对象并设置点和线
+    // 创建单个polyData同时包含点和线
     vtkNew<vtkPolyData> polyData;
     polyData->SetPoints(points);
+
+    // 添加顶点为Verts
+    vtkNew<vtkCellArray> vertices;
+    for (int i = 0; i < pointCount; i++) {
+        vtkNew<vtkVertex> vertex;
+        vertex->GetPointIds()->SetId(0, i);
+        vertices->InsertNextCell(vertex);
+    }
+    polyData->SetVerts(vertices);
+
+    // 添加线段为Lines
     polyData->SetLines(lines);
-    polyData->GetCellData()->SetScalars(colors);
+
+    // 设置点的颜色 - 将颜色数据设置为点数据
+    polyData->GetPointData()->SetScalars(pointColors);
+
+    // 创建单元颜色数组，包含顶点和线段的颜色
+    vtkNew<vtkUnsignedCharArray> cellColors;
+    cellColors->SetNumberOfComponents(3);
+    cellColors->SetName("CellColors");
+
+    // 先添加所有顶点的颜色
+    for (int i = 0; i < pointCount; i++) {
+        cellColors->InsertNextTypedTuple(pointColors->GetPointer(3 * i));
+    }
+
+    // 再添加所有线段的颜色
+    for (int i = 0; i < lines->GetNumberOfCells(); i++) {
+        cellColors->InsertNextTypedTuple(colors->GetPointer(3 * i));
+    }
+
+    // 设置单元颜色
+    polyData->GetCellData()->SetScalars(cellColors);
 
     // 创建mapper并设置输入数据
     vtkNew<vtkPolyDataMapper> mapper;
     mapper->SetInputData(polyData);
+    // 使用单元数据的颜色进行渲染
+    mapper->SetScalarModeToUseCellData();
+    mapper->ScalarVisibilityOn();
 
     // 设置mapper
     actor->SetMapper(mapper);
+    // 设置点的大小
+    actor->GetProperty()->SetPointSize(5);
 
     spdlog::info("Rendered {} loops across {} layers with total {} points and {} lines",
                  totalLoops,
