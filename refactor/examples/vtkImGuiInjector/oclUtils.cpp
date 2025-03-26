@@ -1,7 +1,6 @@
 ﻿#include "oclUtils.h"
 
-ocl::Path createGuidePath(const ocl::STLSurf& surface)
-{
+ocl::Path createGuidePath(const ocl::STLSurf& surface) {
     // Enlarge 5%
     double x_min = surface.bb.minpt.x;
     x_min -= 0.05 * x_min;
@@ -27,20 +26,19 @@ ocl::Path createGuidePath(const ocl::STLSurf& surface)
 }
 
 void waterline(CAMModelManager& model,
-               vtkSmartPointer<vtkActor>& opActor,
+               vtkActorManager& actorManager,
                double sampling,
                double lift_to,
                double lift_step,
                double lift_from,
-               bool verbose)
-{
+               bool verbose) {
     if (!model.cutter || !model.surface) {
         spdlog::error("No cutter or surface");
         return;
     }
 
     model.operation = std::make_unique<ocl::Waterline>();
-    auto& wl = *dynamic_cast<ocl::Waterline*>(model.operation.get());
+    auto& wl = *dynamic_cast<ocl::Waterline *>(model.operation.get());
     wl.setSTL(*model.surface);
     wl.setCutter(model.cutter.get());
     wl.setSampling(sampling);
@@ -67,24 +65,27 @@ void waterline(CAMModelManager& model,
         spdlog::info("Generated {} layers of loops in {:.2f} ms", all_loops.size(), sw);
     }
 
-    UpdateLoopsActor(opActor, all_loops);
+    UpdateLoopsActor(actorManager.operationActor, all_loops);
+    if (actorManager.operationActor) {
+        actorManager.operationActor->SetObjectName("Waterline");
+        actorManager.legendActor->VisibilityOff();
+    }
 }
 
 void adaptiveWaterline(CAMModelManager& model,
-                       vtkSmartPointer<vtkActor>& opActor,
+                       vtkActorManager& actorManager,
                        double sampling,
                        double minSampling,
                        double lift_to,
                        double lift_step,
                        double lift_from,
-                       bool verbose)
-{
+                       bool verbose) {
     if (!model.cutter || !model.surface) {
         spdlog::error("No cutter or surface");
         return;
     }
     model.operation = std::make_unique<ocl::AdaptiveWaterline>();
-    auto& awl = *dynamic_cast<ocl::AdaptiveWaterline*>(model.operation.get());
+    auto& awl = *dynamic_cast<ocl::AdaptiveWaterline *>(model.operation.get());
     awl.setSTL(*model.surface);
     awl.setCutter(model.cutter.get());
     awl.setSampling(sampling);
@@ -115,17 +116,20 @@ void adaptiveWaterline(CAMModelManager& model,
         spdlog::info("Generated {} layers of adaptive loops in {:.2f} ms", all_loops.size(), sw);
     }
 
-    UpdateLoopsActor(opActor, all_loops);
+    UpdateLoopsActor(actorManager.operationActor, all_loops);
+    if (actorManager.operationActor) {
+        actorManager.operationActor->SetObjectName("Adaptive Waterline");
+        actorManager.legendActor->VisibilityOff();
+    }
 }
 
-void pathDropCutter(CAMModelManager& model, vtkSmartPointer<vtkActor>& opActor, double sampling)
-{
+void pathDropCutter(CAMModelManager& model, vtkActorManager& actorManager, double sampling) {
     if (!model.cutter || !model.surface) {
         spdlog::error("No cutter or surface");
         return;
     }
     model.operation = std::make_unique<ocl::PathDropCutter>();
-    auto& pdc = *dynamic_cast<ocl::PathDropCutter*>(model.operation.get());
+    auto& pdc = *dynamic_cast<ocl::PathDropCutter *>(model.operation.get());
     spdlog::stopwatch sw;
     pdc.setSTL(*model.surface);
     pdc.setCutter(model.cutter.get());
@@ -139,21 +143,24 @@ void pathDropCutter(CAMModelManager& model, vtkSmartPointer<vtkActor>& opActor, 
     auto points = pdc.getPoints();
     spdlog::info("PDC done in {} ms and got {} points", sw, points.size());
 
-    UpdateCLPointCloudActor(opActor, points);
+    UpdateCLPointCloudActor(actorManager.operationActor, actorManager.legendActor, points);
+    if (actorManager.operationActor) {
+        actorManager.operationActor->SetObjectName("Path Drop Cutter");
+        actorManager.legendActor->VisibilityOn();
+    }
 }
 
 void adaptivePathDropCutter(CAMModelManager& model,
-                            vtkSmartPointer<vtkActor>& opActor,
+                            vtkActorManager& actorManager,
                             double sampling,
-                            double minSampling)
-{
+                            double minSampling) {
     if (!model.cutter || !model.surface) {
         spdlog::error("No cutter or surface");
         return;
     }
     spdlog::stopwatch sw;
     model.operation = std::make_unique<ocl::AdaptivePathDropCutter>();
-    auto& apdc = *dynamic_cast<ocl::AdaptivePathDropCutter*>(model.operation.get());
+    auto& apdc = *dynamic_cast<ocl::AdaptivePathDropCutter *>(model.operation.get());
     apdc.setSTL(*model.surface);
     apdc.setCutter(model.cutter.get());
 
@@ -167,11 +174,14 @@ void adaptivePathDropCutter(CAMModelManager& model,
     auto points = apdc.getPoints();
     spdlog::info("APDC done in {} ms and got {} points", sw, points.size());
 
-    UpdateCLPointCloudActor(opActor, points);
+    UpdateCLPointCloudActor(actorManager.operationActor, actorManager.legendActor, points);
+    if (actorManager.operationActor) {
+        actorManager.operationActor->SetObjectName("Adaptive Path Drop Cutter");
+        actorManager.operationActor->VisibilityOn();
+    }
 }
 
-void hello_ocl()
-{
+void hello_ocl() {
     spdlog::info("ocl version: {}", ocl::version());
     spdlog::info("max threads: {}", ocl::max_threads());
 }

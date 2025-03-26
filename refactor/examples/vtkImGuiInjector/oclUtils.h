@@ -7,6 +7,7 @@
 
 #include "vtkUtils.h"
 
+// OCL Stuff
 #include "algo/adaptivewaterline.hpp"
 #include "algo/waterline.hpp"
 #include "cutters/ballcutter.hpp"
@@ -22,8 +23,7 @@
 #include "geo/stlsurf.hpp"
 #include "ocl.hpp"
 
-struct CAMModelManager
-{
+struct CAMModelManager {
     std::unique_ptr<ocl::STLSurf> surface;
     std::unique_ptr<ocl::MillingCutter> cutter;
     std::unique_ptr<ocl::Operation> operation;
@@ -36,7 +36,7 @@ void hello_ocl();
 ocl::Path createGuidePath(const ocl::STLSurf& surface);
 
 void waterline(CAMModelManager& model,
-               vtkSmartPointer<vtkActor>& opActor,
+               vtkActorManager& actorManager,
                double sampling,
                double lift_to = 1,
                double lift_step = 0.1,
@@ -44,7 +44,7 @@ void waterline(CAMModelManager& model,
                bool verbose = true);
 
 void adaptiveWaterline(CAMModelManager& model,
-                       vtkSmartPointer<vtkActor>& opActor,
+                       vtkActorManager& actorManager,
                        double sampling,
                        double minSampling,
                        double lift_to = 1,
@@ -52,9 +52,9 @@ void adaptiveWaterline(CAMModelManager& model,
                        double lift_from = 0.0,
                        bool verbose = true);
 
-void pathDropCutter(CAMModelManager& model, vtkSmartPointer<vtkActor>& opActor, double sampling);
+void pathDropCutter(CAMModelManager& model, vtkActorManager& actorManager, double sampling);
 
 void adaptivePathDropCutter(CAMModelManager& model,
-                            vtkSmartPointer<vtkActor>& opActor,
+                            vtkActorManager& actorManager,
                             double sampling,
                             double minSampling);

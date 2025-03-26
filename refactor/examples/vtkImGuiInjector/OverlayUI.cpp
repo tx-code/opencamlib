@@ -99,22 +99,22 @@ void DrawCAMExample(vtkDearImGuiInjector* injector)
                 radian<double>() * third_pi<double>();  // cone cutter need this
             static double radius = 0.1;                 // bull cutter need this
             if (cutter_type_index == 0) {
-                ImGui::InputDouble("Diameter", &diameter);
-                ImGui::InputDouble("Length", &length);
+                ImGui::InputDouble("Diameter", &diameter, 0.01f, 1.0f, "%.3f");
+                ImGui::InputDouble("Length", &length, 0.01f, 1.0f, "%.3f");
             }
             else if (cutter_type_index == 1) {
-                ImGui::InputDouble("Diameter", &diameter);
-                ImGui::InputDouble("Length", &length);
+                ImGui::InputDouble("Diameter", &diameter, 0.01f, 1.0f, "%.3f");
+                ImGui::InputDouble("Length", &length, 0.01f, 1.0f, "%.3f");
             }
             else if (cutter_type_index == 2) {
-                ImGui::InputDouble("Diameter", &diameter);
-                ImGui::InputDouble("Length", &length);
-                ImGui::InputDouble("Radius", &radius);
+                ImGui::InputDouble("Diameter", &diameter, 0.01f, 1.0f, "%.3f");
+                ImGui::InputDouble("Length", &length, 0.01f, 1.0f, "%.3f");
+                ImGui::InputDouble("Radius", &radius, 0.01f, 1.0f, "%.3f");
             }
             else if (cutter_type_index == 3) {
-                ImGui::InputDouble("Diameter", &diameter);
-                ImGui::InputDouble("Length", &length);
-                ImGui::InputDouble("Angle", &angle_in_deg);
+                ImGui::InputDouble("Diameter", &diameter, 0.01f, 1.0f, "%.3f");
+                ImGui::InputDouble("Length", &length, 0.01f, 1.0f, "%.3f");
+                ImGui::InputDouble("Angle", &angle_in_deg, 0.01f, 1.0f, "%.3f");
             }
 
             if (ImGui::Button("Ok")) {
@@ -172,24 +172,24 @@ void DrawCAMExample(vtkDearImGuiInjector* injector)
 
             switch (op_type_index) {
                 case 0:
-                    ImGui::InputDouble("Sampling", &sampling);
-                    ImGui::InputDouble("Lift Step", &lift_step);
-                    ImGui::InputDouble("Lift From", &lift_from);
-                    ImGui::InputDouble("Lift To", &lift_to);
+                    ImGui::InputDouble("Sampling", &sampling, 0.01f, 1.0f, "%.3f");
+                    ImGui::InputDouble("Lift Step", &lift_step, 0.01f, 1.0f, "%.3f");
+                    ImGui::InputDouble("Lift From", &lift_from, 0.01f, 1.0f, "%.3f");
+                    ImGui::InputDouble("Lift To", &lift_to, 0.01f, 1.0f, "%.3f");
                     break;
                 case 1:
-                    ImGui::InputDouble("Sampling", &sampling);
-                    ImGui::InputDouble("Min Sampling", &min_sampling);
-                    ImGui::InputDouble("Lift Step", &lift_step);
-                    ImGui::InputDouble("Lift From", &lift_from);
-                    ImGui::InputDouble("Lift To", &lift_to);
+                    ImGui::InputDouble("Sampling", &sampling, 0.01f, 1.0f, "%.3f");
+                    ImGui::InputDouble("Min Sampling", &min_sampling, 0.01f, 1.0f, "%.3f");
+                    ImGui::InputDouble("Lift Step", &lift_step, 0.01f, 1.0f, "%.3f");
+                    ImGui::InputDouble("Lift From", &lift_from, 0.01f, 1.0f, "%.3f");
+                    ImGui::InputDouble("Lift To", &lift_to, 0.01f, 1.0f, "%.3f");
                     break;
                 case 2:
-                    ImGui::InputDouble("Sampling", &sampling);
+                    ImGui::InputDouble("Sampling", &sampling, 0.01f, 1.0f, "%.3f");
                     break;
                 case 3:
-                    ImGui::InputDouble("Sampling", &sampling);
-                    ImGui::InputDouble("Min Sampling", &min_sampling);
+                    ImGui::InputDouble("Sampling", &sampling, 0.01f, 1.0f, "%.3f");
+                    ImGui::InputDouble("Min Sampling", &min_sampling, 0.01f, 1.0f, "%.3f");
                     break;
                 default:
                     break;
@@ -197,11 +197,10 @@ void DrawCAMExample(vtkDearImGuiInjector* injector)
 
             if (ImGui::Button("Run Operation")) {
                 if (modelManager.cutter && modelManager.surface) {
-
                     switch (op_type_index) {
                         case 0:
                             waterline(modelManager,
-                                      actorManager.operationActor,
+                                      actorManager,
                                       sampling,
                                       lift_to,
                                       lift_step,
@@ -209,7 +208,7 @@ void DrawCAMExample(vtkDearImGuiInjector* injector)
                             break;
                         case 1:
                             adaptiveWaterline(modelManager,
-                                              actorManager.operationActor,
+                                              actorManager,
                                               sampling,
                                               min_sampling,
                                               lift_to,
@@ -217,11 +216,11 @@ void DrawCAMExample(vtkDearImGuiInjector* injector)
                                               lift_from);
                             break;
                         case 2:
-                            pathDropCutter(modelManager, actorManager.operationActor, sampling);
+                            pathDropCutter(modelManager, actorManager, sampling);
                             break;
                         case 3:
                             adaptivePathDropCutter(modelManager,
-                                                   actorManager.operationActor,
+                                                   actorManager,
                                                    sampling,
                                                    min_sampling);
                             break;
@@ -343,6 +342,9 @@ void DrawCAMExample(vtkDearImGuiInjector* injector)
         if (modelManager.operation) {
             auto operation = actorManager.operationActor;
             ImGui::Text(operation->GetObjectName().c_str());
+            bool visible = operation->GetVisibility();
+            ImGui::Checkbox("Show Operation", &visible);
+            operation->SetVisibility(visible);
         }
         else {
             ImGui::TextDisabled("No Operation");

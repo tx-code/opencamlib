@@ -6,6 +6,7 @@
 #include <unordered_map>
 
 #include "vtkDearImGuiInjector.h"
+#include "vtkKeySymToImGuiKey.h"
 
 #include <vtkCallbackCommand.h>
 #include <vtkInteractorStyleSwitch.h>
@@ -155,6 +156,12 @@ bool vtkDearImGuiInjector::SetUp(vtkRenderWindow* renWin)
     (void)io;
     io.BackendFlags |= ImGuiBackendFlags_HasMouseCursors;  // We can honor GetMouseCursor() values
                                                            // (optional)
+                                                           // Keyboard mapping. Dear ImGui will use
+                                                           // those indices to peek into the
+                                                           // io.KeysDown[] array.
+#if USES_WIN32
+
+#endif
 
 #if defined(_WIN32)
     io.BackendPlatformName = renWin->GetClassName();
@@ -466,6 +473,7 @@ void vtkDearImGuiInjector::InterceptEvent(vtkObject* caller,
     // auto interactor = vtkRenderWindowInteractor::SafeDownCast(caller);
     auto iStyle = vtkInteractorStyle::SafeDownCast(caller);
     auto self = reinterpret_cast<vtkDearImGuiInjector*>(clientData);
+    constexpr bool debug_event = false;
 
     ImGuiIO& io = ImGui::GetIO();
     (void)io;
@@ -591,15 +599,17 @@ void vtkDearImGuiInjector::InterceptEvent(vtkObject* caller,
         }
         case vtkCommand::CharEvent: {
             std::string keySym = iStyle->GetInteractor()->GetKeySym();
+            auto keyCode = iStyle->GetInteractor()->GetKeyCode();
+            if constexpr (debug_event) {
+                spdlog::info("CharEvent: KeySym:{}, KeyCode:{}, ASCII Value:{}",
+                             keySym,
+                             keyCode,
+                             static_cast<int>(keyCode));
+            }
 #ifdef USES_WIN32
-            unsigned int key = 0;
-            if (KeySymToVKeyCode.find(keySym.c_str()) != KeySymToVKeyCode.end()) {
-                key = KeySymToVKeyCode.at(keySym.c_str());
+            if (keyCode) {
+                io.AddInputCharacter(keyCode);
             }
-            else {
-                key = static_cast<unsigned int>(iStyle->GetInteractor()->GetKeyCode());
-            }
-            io.AddInputCharacter(key);
 #else
             io.AddInputCharactersUTF8(keySym.c_str());
 #endif
@@ -613,6 +623,21 @@ void vtkDearImGuiInjector::InterceptEvent(vtkObject* caller,
         case vtkCommand::KeyReleaseEvent: {
             bool down = eid == vtkCommand::KeyPressEvent;
             std::string keySym = iStyle->GetInteractor()->GetKeySym();
+            if constexpr (debug_event) {
+                if (down) {
+                    spdlog::info("");
+                    spdlog::info("KeyPressEvent: KeySym:{}, KeyCode:{}, ASCII Value:{}",
+                                 keySym,
+                                 iStyle->GetInteractor()->GetKeyCode(),
+                                 static_cast<int>(iStyle->GetInteractor()->GetKeyCode()));
+                }
+                else {
+                    spdlog::info("KeyReleaseEvent: KeySym:{}, KeyCode:{}, ASCII Value:{}",
+                                 keySym,
+                                 iStyle->GetInteractor()->GetKeyCode(),
+                                 static_cast<int>(iStyle->GetInteractor()->GetKeyCode()));
+                }
+            }
 #ifdef USES_X11
             unsigned int key = iStyle->GetInteractor()->GetKeyCode();
             // Do not rely on VTK giving correct info for ctrl, shift, alt keys on X11.
@@ -647,8 +672,11 @@ void vtkDearImGuiInjector::InterceptEvent(vtkObject* caller,
             io.KeyShift = iStyle->GetInteractor()->GetShiftKey();
             io.KeySuper = (GetKeyState(VK_LWIN) || GetKeyState(VK_RWIN)) ? true : false;
 #endif
-            if (key >= 0 && key < IM_ARRAYSIZE(io.KeysData)) {
-                io.KeysData[key].Down = down;
+            if (KeySymToImGuiKey.find(keySym.c_str()) != KeySymToImGuiKey.end()) {
+                io.AddKeyEvent(KeySymToImGuiKey.at(keySym.c_str()), down);
+            }
+            else {
+                spdlog::warn("KeySymToImGuiKey: {} not found", keySym);
             }
             io.KeyAlt &= down;
             io.KeyCtrl &= down;

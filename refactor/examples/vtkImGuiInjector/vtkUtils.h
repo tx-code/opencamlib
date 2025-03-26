@@ -14,6 +14,7 @@
 #include <vtkDoubleArray.h>
 #include <vtkFollower.h>
 #include <vtkIntArray.h>
+#include <vtkLegendBoxActor.h>
 #include <vtkLight.h>
 #include <vtkLightCollection.h>
 #include <vtkLine.h>
@@ -67,7 +68,7 @@ struct vtkActorManager
     vtkSmartPointer<vtkActor> modelActor {vtkSmartPointer<vtkActor>::New()};
     vtkSmartPointer<vtkActor> cutterActor {vtkSmartPointer<vtkActor>::New()};
     vtkSmartPointer<vtkActor> operationActor {vtkSmartPointer<vtkActor>::New()};
-    vtkSmartPointer<vtkActor> legendActor {vtkSmartPointer<vtkActor>::New()};
+    vtkSmartPointer<vtkLegendBoxActor> legendActor {vtkSmartPointer<vtkLegendBoxActor>::New()};
 
     vtkSmartPointer<vtkAxesActor> axesActor {vtkSmartPointer<vtkAxesActor>::New()};
 };
@@ -634,9 +635,9 @@ void UpdateStlSurfActor(vtkSmartPointer<vtkActor>& actor,
 vtkSmartPointer<vtkLookupTable> CreateCCTypeLookupTable(bool forCLPoints = true);
 
 // Draw a point cloud with CCType-based coloring using lookup table
-void UpdateCLPointCloudActor(vtkSmartPointer<vtkActor>& actor,
-                             const std::vector<ocl::CLPoint>& clpoints,
-                             bool forCLPoints = true);
+void UpdateCLPointCloudActor(vtkSmartPointer<vtkActor>& pointsActor,
+                             vtkSmartPointer<vtkLegendBoxActor>& legendActor,
+                             const std::vector<ocl::CLPoint>& clpoints, bool forCLPoints = true);
 
 // 新增能处理多层loops的函数
 void UpdateLoopsActor(vtkSmartPointer<vtkActor>& actor,
