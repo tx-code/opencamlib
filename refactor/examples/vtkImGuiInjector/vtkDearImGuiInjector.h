@@ -29,68 +29,66 @@ class vtkRenderWindowInteractor;
 class vtkCallbackCommand;
 class vtkInteractorStyle;
 
-class vtkDearImGuiInjector : public vtkObject {
+class vtkDearImGuiInjector: public vtkObject
+{
 public:
-  static vtkDearImGuiInjector *New();
-  vtkTypeMacro(vtkDearImGuiInjector, vtkObject);
+    static vtkDearImGuiInjector* New();
+    vtkTypeMacro(vtkDearImGuiInjector, vtkObject);
 
-  // rendering and interaction callbacks are installed here.
-  void Inject(vtkRenderWindowInteractor *interactor);
+    // rendering and interaction callbacks are installed here.
+    void Inject(vtkRenderWindowInteractor* interactor);
 
-  void InstallEventCallback(vtkRenderWindowInteractor *interactor);
-  void UninstallEventCallback();
+    void InstallEventCallback(vtkRenderWindowInteractor* interactor);
+    void UninstallEventCallback();
 
-  // Observe this event and draw application specific ImGui widgets
-  static const unsigned long ImGuiDrawEvent = vtkCommand::UserEvent + 1;
-  static const unsigned long ImGuiSetupEvent = vtkCommand::UserEvent + 2;
-  static const unsigned long ImGuiTearDownEvent = vtkCommand::UserEvent + 3;
-  vtkWeakPointer<vtkRenderWindowInteractor> Interactor;
+    // Observe this event and draw application specific ImGui widgets
+    static const unsigned long ImGuiDrawEvent = vtkCommand::UserEvent + 1;
+    static const unsigned long ImGuiSetupEvent = vtkCommand::UserEvent + 2;
+    static const unsigned long ImGuiTearDownEvent = vtkCommand::UserEvent + 3;
+    vtkWeakPointer<vtkRenderWindowInteractor> Interactor;
 
 protected:
-  vtkDearImGuiInjector();
-  ~vtkDearImGuiInjector() override;
+    vtkDearImGuiInjector();
+    ~vtkDearImGuiInjector() override;
 
-  // pair imgui with vtk
-  bool SetUp(vtkRenderWindow *renWin);
-  void TearDown(vtkObject *caller, unsigned long eid, void *callData);
+    // pair imgui with vtk
+    bool SetUp(vtkRenderWindow* renWin);
+    void TearDown(vtkObject* caller, unsigned long eid, void* callData);
 
-  // hooks into vtkRenderWindow
-  void BeginDearImGuiOverlay(vtkObject *caller, unsigned long eid,
-                             void *callData);
-  void RenderDearImGuiOverlay(vtkObject *caller, unsigned long eid,
-                              void *callData);
+    // hooks into vtkRenderWindow
+    void BeginDearImGuiOverlay(vtkObject* caller, unsigned long eid, void* callData);
+    void RenderDearImGuiOverlay(vtkObject* caller, unsigned long eid, void* callData);
 
-  // Mouse will be set here.
-  void UpdateMousePosAndButtons(vtkRenderWindowInteractor *interactor);
-  void UpdateMouseCursor(vtkRenderWindow *renWin);
+    // Mouse will be set here.
+    void UpdateMousePosAndButtons(vtkRenderWindowInteractor* interactor);
+    void UpdateMouseCursor(vtkRenderWindow* renWin);
 
-  // Run the event loop.
-  void PumpEvents(vtkObject *caller, unsigned long eid, void *callData);
+    // Run the event loop.
+    void PumpEvents(vtkObject* caller, unsigned long eid, void* callData);
 
-  // route an event through Dear ImGUI.
-  // VTK[X,Win32,Cocoa]Interactor ---> DearImGui ---> VTK[...]InteractorStyle
-  static void InterceptEvent(vtkObject *caller, unsigned long eid,
-                             void *clientData, void *callData);
+    // route an event through Dear ImGUI.
+    // VTK[X,Win32,Cocoa]Interactor ---> DearImGui ---> VTK[...]InteractorStyle
+    static void
+    InterceptEvent(vtkObject* caller, unsigned long eid, void* clientData, void* callData);
 
-  vtkNew<vtkCallbackCommand> EventInterceptor;
-  vtkWeakPointer<vtkInteractorStyle> CurrentIStyle;
+    vtkNew<vtkCallbackCommand> EventInterceptor;
+    vtkWeakPointer<vtkInteractorStyle> CurrentIStyle;
 
-  double Time = 0;
-  bool MouseJustPressed[3] = {false, false, false};
-  bool FinishedSetup = false;
-  bool Focused = true;
-  bool GrabMouse = false; // true: pass mouse to vtk, false: imgui accepts mouse
-                          // and doesn't give it to VTK (when ui is focused)
-  bool GrabKeyboard =
-      false; // true: pass keys to vtk, false: imgui accepts
-             // keys and doesn't give it to VTK (when ui is focused)
+    double Time = 0;
+    bool MouseJustPressed[3] = {false, false, false};
+    bool FinishedSetup = false;
+    bool Focused = true;
+    bool GrabMouse = false;     // true: pass mouse to vtk, false: imgui accepts mouse
+                                // and doesn't give it to VTK (when ui is focused)
+    bool GrabKeyboard = false;  // true: pass keys to vtk, false: imgui accepts
+                                // keys and doesn't give it to VTK (when ui is focused)
 
-  bool ShowDemo = true;
-  bool ShowAppMetrics = false;
-  bool ShowAppStyleEditor = false;
-  bool ShowAppAbout = false;
+    bool ShowDemo = true;
+    bool ShowAppMetrics = false;
+    bool ShowAppStyleEditor = false;
+    bool ShowAppAbout = false;
 
 private:
-  vtkDearImGuiInjector(const vtkDearImGuiInjector &) = delete;
-  void operator=(const vtkDearImGuiInjector &) = delete;
+    vtkDearImGuiInjector(const vtkDearImGuiInjector&) = delete;
+    void operator=(const vtkDearImGuiInjector&) = delete;
 };

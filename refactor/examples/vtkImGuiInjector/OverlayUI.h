@@ -8,6 +8,6 @@ class vtkObject;
 class OverlayUI
 {
 public:
-  static void setup(vtkObject* caller, unsigned long eventId, void* clientData, void* callData);
-  static void draw(vtkObject* caller, unsigned long eventId, void* clientData, void* callData);
+    static void setup(vtkObject* caller, unsigned long eventId, void* clientData, void* callData);
+    static void draw(vtkObject* caller, unsigned long eventId, void* clientData, void* callData);
 };
