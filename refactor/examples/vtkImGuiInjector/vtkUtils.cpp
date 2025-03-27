@@ -42,7 +42,7 @@ void UpdateCylCutter(vtkSmartPointer<vtkActor>& actor,
 }
 
 // 绘制球头铣刀(Ball Cutter)
-// 球头铣刀的CL位置在球头中心 (TODO: 需要验证)
+// 球头铣刀的CL位置在半球顶部
 void UpdateBallCutter(vtkSmartPointer<vtkActor>& actor,
                       const ocl::BallCutter& cutter,
                       const ocl::Point& p)
@@ -50,18 +50,19 @@ void UpdateBallCutter(vtkSmartPointer<vtkActor>& actor,
     assert(actor);
     double r = cutter.getRadius();
     double flutesLength = cutter.getLength();
+    double shaftLength = flutesLength - r;
 
     // 创建圆柱部分（刀杆）
     vtkNew<vtkCylinderSource> cylinderSource;
-    cylinderSource->SetCenter(p.x, p.y - (flutesLength - r) / 2.0, p.z);
-    cylinderSource->SetHeight(flutesLength - r);
+    cylinderSource->SetCenter(p.x, p.y - shaftLength / 2.0 - r, p.z);
+    cylinderSource->SetHeight(shaftLength);
     cylinderSource->SetRadius(r);
     cylinderSource->SetResolution(30);
     cylinderSource->CappingOn();
 
     // 创建球体部分
     vtkNew<vtkSphereSource> sphereSource;
-    sphereSource->SetCenter(p.x, p.y, p.z);
+    sphereSource->SetCenter(p.x, p.y - r, p.z);
     sphereSource->SetRadius(r);
     sphereSource->SetPhiResolution(30);
     sphereSource->SetThetaResolution(30);
