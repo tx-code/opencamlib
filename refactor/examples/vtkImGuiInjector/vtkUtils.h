@@ -47,7 +47,7 @@
 #include <vtkVectorText.h>
 #include <vtkVertex.h>
 #include <vtkVertexGlyphFilter.h>
-
+#include <vtkNamedColors.h>
 
 #include <cmath>
 #include <memory>
@@ -521,60 +521,78 @@ inline vtkSmartPointer<vtkActor> CreateToroid(double r1 = 1.0,
 inline void GetClColor(ocl::CCType ccType, double color[3])
 {
     switch (ccType) {
+        case ocl::CCType::NONE:
+            // 白色
+            color[0] = 1.0; color[1] = 1.0; color[2] = 1.0;
+            break;
         case ocl::CCType::VERTEX:
-            std::copy_n(red, 3, color);
+            // 亮绿色
+            color[0] = 0.0; color[1] = 1.0; color[2] = 0.0;
             break;
         case ocl::CCType::VERTEX_CYL:
-            std::copy_n(pink, 3, color);
-            break;
-        case ocl::CCType::FACET:
-            std::copy_n(green, 3, color);
-            break;
-        case ocl::CCType::FACET_TIP:  // conecutter tip-contact
-            std::copy_n(lgreen, 3, color);
-            break;
-        case ocl::CCType::FACET_CYL:  // conecutter cylinder-contact
-            std::copy_n(grass, 3, color);
+            // 深蓝色
+            color[0] = 0.0; color[1] = 0.0; color[2] = 0.7;
             break;
         case ocl::CCType::EDGE:
-            std::copy_n(blue, 3, color);
+            // 深粉色
+            color[0] = 1.0; color[1] = 0.08; color[2] = 0.58;
             break;
         case ocl::CCType::EDGE_HORIZ:
-            std::copy_n(orange, 3, color);
+            // 深绿松石色
+            color[0] = 0.0; color[1] = 0.81; color[2] = 0.82;
             break;
         case ocl::CCType::EDGE_SHAFT:
-            std::copy_n(mag, 3, color);
-            break;
-        case ocl::CCType::EDGE_BALL:
-            std::copy_n(lblue, 3, color);
-            break;
-        case ocl::CCType::EDGE_CYL:
-            std::copy_n(lblue, 3, color);
-            break;
-        case ocl::CCType::EDGE_POS:
-            std::copy_n(lblue, 3, color);
-            break;
-        case ocl::CCType::EDGE_NEG:
-            std::copy_n(mag, 3, color);
+            // 橙红色
+            color[0] = 1.0; color[1] = 0.27; color[2] = 0.0;
             break;
         case ocl::CCType::EDGE_HORIZ_CYL:
-            std::copy_n(pink, 3, color);
+            // 红色
+            color[0] = 1.0; color[1] = 0.0; color[2] = 0.0;
             break;
         case ocl::CCType::EDGE_HORIZ_TOR:
-            std::copy_n(orange, 3, color);
+            // 橙色
+            color[0] = 1.0; color[1] = 0.65; color[2] = 0.0;
+            break;
+        case ocl::CCType::EDGE_BALL:
+            // 深天蓝
+            color[0] = 0.0; color[1] = 0.75; color[2] = 1.0;
+            break;
+        case ocl::CCType::EDGE_POS:
+            // 春绿色
+            color[0] = 0.0; color[1] = 1.0; color[2] = 0.5;
+            break;
+        case ocl::CCType::EDGE_NEG:
+            // 紫色
+            color[0] = 0.5; color[1] = 0.0; color[2] = 0.5;
+            break;
+        case ocl::CCType::EDGE_CYL:
+            // 石板蓝
+            color[0] = 0.42; color[1] = 0.35; color[2] = 0.8;
             break;
         case ocl::CCType::EDGE_CONE:
-            std::copy_n(pink, 3, color);
+            // 中兰花紫
+            color[0] = 0.73; color[1] = 0.33; color[2] = 0.83;
             break;
         case ocl::CCType::EDGE_CONE_BASE:
-            std::copy_n(cyan, 3, color);
+            // 青色
+            color[0] = 0.0; color[1] = 1.0; color[2] = 1.0;
             break;
-        case ocl::CCType::NONE:
-            std::copy_n(white, 3, color);
+        case ocl::CCType::FACET:
+            // 银灰色
+            color[0] = 0.75; color[1] = 0.75; color[2] = 0.75;
+            break;
+        case ocl::CCType::FACET_TIP:  // conecutter tip-contact
+            // 洋红色
+            color[0] = 1.0; color[1] = 0.0; color[2] = 1.0;
+            break;
+        case ocl::CCType::FACET_CYL:  // conecutter cylinder-contact
+            // 金黄色
+            color[0] = 1.0; color[1] = 0.84; color[2] = 0.0;
             break;
         default:
         case ocl::CCType::CCTYPE_ERROR:
-            std::copy_n(white, 3, color);
+            // 暗灰色
+            color[0] = 0.33; color[1] = 0.33; color[2] = 0.33;
             break;
     }
 }
@@ -583,40 +601,78 @@ inline void GetClColor(ocl::CCType ccType, double color[3])
 inline void GetCcColor(ocl::CCType ccType, double color[3])
 {
     switch (ccType) {
-        case ocl::CCType::FACET:
-            std::copy_n(lblue, 3, color);
-            break;
-        case ocl::CCType::FACET_TIP:
-            std::copy_n(mag, 3, color);
-            break;
-        case ocl::CCType::FACET_CYL:
-            std::copy_n(yellow, 3, color);
+        case ocl::CCType::NONE:
+            // 白色
+            color[0] = 1.0; color[1] = 1.0; color[2] = 1.0;
             break;
         case ocl::CCType::VERTEX:
-            std::copy_n(green, 3, color);
+            // 酸橙绿
+            color[0] = 0.2; color[1] = 0.8; color[2] = 0.2;
+            break;
+        case ocl::CCType::VERTEX_CYL:
+            // 深青色
+            color[0] = 0.0; color[1] = 0.4; color[2] = 0.6;
             break;
         case ocl::CCType::EDGE:
-            std::copy_n(pink, 3, color);
+            // 热粉红
+            color[0] = 1.0; color[1] = 0.41; color[2] = 0.71;
+            break;
+        case ocl::CCType::EDGE_HORIZ:
+            // 海蓝色
+            color[0] = 0.13; color[1] = 0.7; color[2] = 0.67;
+            break;
+        case ocl::CCType::EDGE_SHAFT:
+            // 棕色
+            color[0] = 0.65; color[1] = 0.16; color[2] = 0.16;
             break;
         case ocl::CCType::EDGE_HORIZ_CYL:
-            std::copy_n(red, 3, color);
+            // 深红色
+            color[0] = 0.86; color[1] = 0.08; color[2] = 0.24;
             break;
         case ocl::CCType::EDGE_HORIZ_TOR:
-            std::copy_n(orange, 3, color);
+            // 珊瑚色
+            color[0] = 1.0; color[1] = 0.5; color[2] = 0.31;
+            break;
+        case ocl::CCType::EDGE_BALL:
+            // 宝蓝色
+            color[0] = 0.0; color[1] = 0.5; color[2] = 0.8;
             break;
         case ocl::CCType::EDGE_POS:
-            std::copy_n(lblue, 3, color);
+            // 矢车菊蓝
+            color[0] = 0.39; color[1] = 0.58; color[2] = 0.93;
             break;
         case ocl::CCType::EDGE_NEG:
-            std::copy_n(mag, 3, color);
+            // 深兰花紫
+            color[0] = 0.6; color[1] = 0.2; color[2] = 0.8;
             break;
-        case ocl::CCType::NONE:
-            std::copy_n(white, 3, color);
+        case ocl::CCType::EDGE_CYL:
+            // 锰紫色
+            color[0] = 0.33; color[1] = 0.0; color[2] = 0.55;
+            break;
+        case ocl::CCType::EDGE_CONE:
+            // 深绿色
+            color[0] = 0.0; color[1] = 0.5; color[2] = 0.0;
+            break;
+        case ocl::CCType::EDGE_CONE_BASE:
+            // 浅蓝绿色
+            color[0] = 0.0; color[1] = 0.8; color[2] = 0.8;
+            break;
+        case ocl::CCType::FACET:
+            // 皇家蓝
+            color[0] = 0.25; color[1] = 0.41; color[2] = 0.88;
+            break;
+        case ocl::CCType::FACET_TIP:
+            // 深洋红
+            color[0] = 0.55; color[1] = 0.0; color[2] = 0.55;
+            break;
+        case ocl::CCType::FACET_CYL:
+            // 黄色
+            color[0] = 1.0; color[1] = 1.0; color[2] = 0.0;
             break;
         default:
         case ocl::CCType::CCTYPE_ERROR:
-            double error_color[3] = {0.0, 0.5, 1.0};
-            std::copy_n(error_color, 3, color);
+            // 黑色
+            color[0] = 0.0; color[1] = 0.0; color[2] = 0.0;
             break;
     }
 }

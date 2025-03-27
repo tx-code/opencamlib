@@ -261,7 +261,7 @@ vtkSmartPointer<vtkLookupTable> CreateCCTypeLookupTable(bool forCLPoints)
     // 为每种CCType设置颜色
     for (int i = 0; i <= static_cast<int>(ocl::CCType::CCTYPE_ERROR); i++) {
         auto ccType = static_cast<ocl::CCType>(i);
-        double color[3];
+        double color[3] = {0, 0, 0};  // 初始化为黑色
 
         if (forCLPoints) {
             GetClColor(ccType, color);
@@ -270,6 +270,7 @@ vtkSmartPointer<vtkLookupTable> CreateCCTypeLookupTable(bool forCLPoints)
             GetCcColor(ccType, color);
         }
 
+        // 显式设置RGBA值，Alpha为1.0
         lut->SetTableValue(i, color[0], color[1], color[2], 1.0);
     }
 
@@ -335,7 +336,10 @@ void UpdateCLPointCloudActor(vtkSmartPointer<vtkActor>& pointsActor,
     if (legendActor && !legendActor->GetNumberOfEntries()) {
         spdlog::info("Set the entries for the legend box");
         // Set the number of entries in the legend
-        legendActor->SetNumberOfEntries(ocl::CCType::CCTYPE_ERROR);
+        // CCType::CCTYPE_ERROR是最后一个枚举值，加1得到实际的枚举元素数量
+        int numEntries = static_cast<int>(ocl::CCType::CCTYPE_ERROR) + 1;
+        spdlog::info("Setting legend entries: {}", numEntries);
+        legendActor->SetNumberOfEntries(numEntries);
 
         // Create a cube symbol for the legend entries
         vtkNew<vtkCubeSource> cubeSource;
@@ -343,21 +347,23 @@ void UpdateCLPointCloudActor(vtkSmartPointer<vtkActor>& pointsActor,
 
         // Add entries to the legend
         for (size_t i = 0; i <= ocl::CCType::CCTYPE_ERROR; i++) {
-            double color[4] = {0, 0, 0, 1};  // 使用4分量数组，最后一个是alpha
-
+            // 使用三分量数组先获取RGB颜色
+            double rgb[3] = {0, 0, 0};
+            
             // Get the color for this CCType
             if (forCLPoints) {
-                GetCcColor(static_cast<ocl::CCType>(i), color);
+                GetCcColor(static_cast<ocl::CCType>(i), rgb);
             }
             else {
-                GetClColor(static_cast<ocl::CCType>(i), color);
+                GetClColor(static_cast<ocl::CCType>(i), rgb);
             }
-
+            
             // 设置图例项
+            std::string typeName = ocl::CCType2String(static_cast<ocl::CCType>(i));
             legendActor->SetEntry(static_cast<int>(i),
                                   cubeSource->GetOutput(),
-                                  ocl::CCType2String(static_cast<ocl::CCType>(i)).c_str(),
-                                  color);
+                                  typeName.c_str(),
+                                  rgb);
         }
 
         // Configure legend appearance
