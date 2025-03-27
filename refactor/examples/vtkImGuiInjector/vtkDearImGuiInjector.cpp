@@ -102,13 +102,17 @@ vtkDearImGuiInjector::~vtkDearImGuiInjector()
 //------------------------------------------------------------------------------
 void vtkDearImGuiInjector::Inject(vtkRenderWindowInteractor* interactor)
 {
+    spdlog::info("vtkDearImGuiInjector initialization started");
+
     if (this->FinishedSetup) {
+        spdlog::error("Inject must be called only once");
         vtkErrorMacro(<< "Inject must be called only once!");
     }
 
     this->Interactor = interactor;
     auto renWin = interactor->GetRenderWindow();
     if (!renWin) {
+        spdlog::error("No render window found in interactor");
         return;
     }
 
@@ -125,15 +129,17 @@ void vtkDearImGuiInjector::Inject(vtkRenderWindowInteractor* interactor)
 
     // Safely exit when vtk app exits
     this->Interactor->AddObserver(vtkCommand::ExitEvent, this, &vtkDearImGuiInjector::TearDown);
+
+    spdlog::info("vtkDearImGuiInjector initialization completed");
 }
 
 //------------------------------------------------------------------------------
 bool vtkDearImGuiInjector::SetUp(vtkRenderWindow* renWin)
 {
     if (renWin->GetNeverRendered()) {
-        vtkDebugMacro(<< "Init called, but render library is not setup. Hold on..");
         return false;  // too early
     }
+
     if (this->FinishedSetup) {
         return true;
     }
@@ -141,10 +147,11 @@ bool vtkDearImGuiInjector::SetUp(vtkRenderWindow* renWin)
     // Only get the first renderer
     auto renderer = renWin->GetRenderers()->GetFirstRenderer();
     if (!renderer) {
-        vtkErrorMacro(<< "No renderer found in the render window.");
+        spdlog::error("No renderer found in render window");
         return false;
     }
 
+    // Add actors to renderer
     renderer->AddActor(this->ActorManager.modelActor);
     renderer->AddActor(this->ActorManager.cutterActor);
     renderer->AddActor(this->ActorManager.legendActor);
@@ -152,6 +159,7 @@ bool vtkDearImGuiInjector::SetUp(vtkRenderWindow* renWin)
     renderer->AddActor(this->ActorManager.axesActor);
     renderer->ResetCamera();
 
+    // Configure ImGui IO
     ImGuiIO& io = ImGui::GetIO();
     (void)io;
     io.BackendFlags |= ImGuiBackendFlags_HasMouseCursors;  // We can honor GetMouseCursor() values
@@ -166,23 +174,36 @@ bool vtkDearImGuiInjector::SetUp(vtkRenderWindow* renWin)
 #if defined(_WIN32)
     io.BackendPlatformName = renWin->GetClassName();
 #endif
+
+    // Initialize ImGui OpenGL3
     bool status = ImGui_ImplOpenGL3_Init();
     this->FinishedSetup = status;
+
+    if (status) {
+        spdlog::info("ImGui initialization successful");
+    }
+    else {
+        spdlog::error("ImGui initialization failed");
+    }
+
     this->InvokeEvent(vtkDearImGuiInjector::ImGuiSetupEvent,
                       reinterpret_cast<void*>(&this->FinishedSetup));
+
     return status;
 }
 
 //------------------------------------------------------------------------------
 void vtkDearImGuiInjector::TearDown(vtkObject* caller, unsigned long eid, void* callData)
 {
+    spdlog::info("Starting resource cleanup");
     auto interactor = vtkRenderWindowInteractor::SafeDownCast(caller);
     if (interactor != nullptr) {
         interactor->SetDone(true);
     }
+
     ImGui_ImplOpenGL3_Shutdown();
     this->InvokeEvent(vtkDearImGuiInjector::ImGuiTearDownEvent, nullptr);
-    vtkDebugMacro(<< "tear down");
+    spdlog::info("Resource cleanup completed");
 }
 
 //------------------------------------------------------------------------------
@@ -194,7 +215,7 @@ void vtkDearImGuiInjector::BeginDearImGuiOverlay(vtkObject* caller,
 
     // Ensure valid DearImGui context exists.
     if (!ImGui::GetCurrentContext()) {
-        vtkDebugMacro(<< "BeginDearImGuiOverlay called, but DearImGui context does not exist.");
+        spdlog::error("No ImGui context found");
         return;
     }
 
@@ -227,6 +248,7 @@ void vtkDearImGuiInjector::BeginDearImGuiOverlay(vtkObject* caller,
     // Begin ImGui drawing
     ImGui_ImplOpenGL3_NewFrame();
     ImGui::NewFrame();
+
     // Menu Bar
     if (ImGui::BeginMainMenuBar()) {
         if (ImGui::BeginMenu("Input")) {
@@ -246,6 +268,8 @@ void vtkDearImGuiInjector::BeginDearImGuiOverlay(vtkObject* caller,
         }
         ImGui::EndMainMenuBar();
     }
+
+    // Show demo windows if enabled
     if (this->ShowDemo) {
         ImGui::SetNextWindowCollapsed(true, ImGuiCond_Once);
         ImGui::ShowDemoWindow(&this->ShowDemo);
@@ -262,6 +286,7 @@ void vtkDearImGuiInjector::BeginDearImGuiOverlay(vtkObject* caller,
         ImGui::ShowAboutWindow(&this->ShowAppAbout);
     }
 
+    // Invoke custom draw event for UI components
     this->InvokeEvent(ImGuiDrawEvent);
 }
 

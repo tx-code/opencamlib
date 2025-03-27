@@ -95,15 +95,18 @@ void LoadRecentFiles()
             file >> j;
 
             if (j.contains("recent_files") && j["recent_files"].is_array()) {
+                int validFileCount = 0;
                 for (const auto& path : j["recent_files"]) {
                     if (path.is_string()) {
                         std::string filePath = path.get<std::string>();
                         // 检查文件是否存在
                         if (std::filesystem::exists(filePath)) {
                             g_recentFiles.push_back(filePath);
+                            validFileCount++;
                         }
                     }
                 }
+                spdlog::info("Loaded {} recent files", validFileCount);
             }
         }
         catch (const std::exception& e) {
@@ -123,10 +126,10 @@ void SaveRecentFiles()
     if (file.is_open()) {
         file << j.dump(4);  // 使用4个空格缩进
         file.close();
-        spdlog::debug("Recent files saved to {}", RECENT_FILES_JSON);
+        spdlog::info("Saved {} recent files", g_recentFiles.size());
     }
     else {
-        spdlog::error("Failed to save recent files to {}", RECENT_FILES_JSON);
+        spdlog::error("Failed to save recent files list");
     }
 }
 
@@ -164,6 +167,7 @@ void LoadSettings()
             // 加载Cutter设置
             if (j.contains("cutter")) {
                 auto& cutter = j["cutter"];
+
                 if (cutter.contains("type_index"))
                     g_settings.cutter_type_index = cutter["type_index"].get<int>();
 
@@ -183,6 +187,7 @@ void LoadSettings()
             // 加载Operation设置
             if (j.contains("operation")) {
                 auto& op = j["operation"];
+
                 if (op.contains("type_index"))
                     g_settings.op_type_index = op["type_index"].get<int>();
 
@@ -202,7 +207,7 @@ void LoadSettings()
                     g_settings.lift_to = op["lift_to"].get<double>();
             }
 
-            spdlog::info("Settings loaded from {}", SETTINGS_JSON);
+            spdlog::info("Settings loaded successfully");
         }
         catch (const std::exception& e) {
             spdlog::error("Error parsing settings JSON: {}", e.what());
@@ -238,10 +243,10 @@ void SaveSettings()
     if (file.is_open()) {
         file << j.dump(4);  // 使用4个空格缩进
         file.close();
-        spdlog::debug("Settings saved to {}", SETTINGS_JSON);
+        spdlog::info("Settings saved successfully");
     }
     else {
-        spdlog::error("Failed to save settings to {}", SETTINGS_JSON);
+        spdlog::error("Failed to save settings");
     }
 }
 
@@ -814,13 +819,19 @@ void DrawCAMExample(vtkDearImGuiInjector* injector)
 //------------------------------------------------------------------------------
 void OverlayUI::setup(vtkObject* caller, unsigned long, void*, void* callData)
 {
+    spdlog::info("OverlayUI::setup - Starting setup");
     auto* overlay_ = reinterpret_cast<vtkDearImGuiInjector*>(caller);
     if (!callData) {
+        spdlog::error("OverlayUI::setup - No callback data, setup failed");
         return;
     }
     if (bool imguiInitStatus = *(static_cast<bool*>(callData))) {
+        spdlog::info("OverlayUI::setup - ImGui initialization successful");
+
+        // 设置字体和样式
         auto& io = ImGui::GetIO();
         io.Fonts->AddFontDefault();
+
         auto& style = ImGui::GetStyle();
         style.ChildRounding = 8;
         style.FrameRounding = 8;
@@ -834,8 +845,10 @@ void OverlayUI::setup(vtkObject* caller, unsigned long, void*, void* callData)
         // 从JSON文件加载最近文件列表和设置
         LoadRecentFiles();
         LoadSettings();
+        spdlog::info("OverlayUI::setup - Setup completed");
     }
     else {
+        spdlog::error("OverlayUI::setup - ImGui initialization failed");
         vtkErrorWithObjectMacro(overlay_,
                                 "Failed to setup overlay UI because ImGUI failed to initialize!");
     }
