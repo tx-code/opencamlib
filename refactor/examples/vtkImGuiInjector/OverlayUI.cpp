@@ -19,7 +19,9 @@
 #include <vtkRenderWindowInteractor.h>
 #include <vtkSetGet.h>
 
+#include "CutterTimerCallback.h"
 #include "oclUtils.h"
+
 
 namespace
 {
@@ -77,6 +79,9 @@ struct OCLSettings
 
 // 全局设置对象
 OCLSettings g_settings;
+
+// 全局回调对象
+vtkSmartPointer<CutterTimerCallback> g_cutterCallback;
 
 // 从JSON文件加载最近文件列表
 void LoadRecentFiles()
@@ -670,8 +675,74 @@ void DrawCAMExample(vtkDearImGuiInjector* injector)
 
                         actorManager.cutterActor->SetPosition(point);
                     }
+
+                    // 添加定时器动画区域
+                    ImGui::SeparatorText("Timer Animation");
+
+                    // 动画参数设置
+                    static int intervalMs = 200;  // 默认每200毫秒移动一步
+                    bool intervalChanged = ImGui::SliderInt("Interval (ms)", &intervalMs, 50, 1000);
+
+                    // 播放按钮
+                    ImGui::BeginDisabled(g_cutterCallback && g_cutterCallback->TimerId > 0);
+                    if (ImGui::Button("Play (Timer)")) {
+                        // 首次创建回调和定时器
+                        if (!g_cutterCallback) {
+                            g_cutterCallback = vtkSmartPointer<CutterTimerCallback>::New();
+                        }
+
+                        // 重置回调状态
+                        g_cutterCallback->Reset();
+
+                        // 设置动画参数
+                        g_cutterCallback->SetActor(actorManager.cutterActor);
+                        g_cutterCallback->SetPoints(points);
+                        g_cutterCallback->SetStartIndex(pointIndex);
+
+                        // 计算总步数
+                        int remainingPoints = points->GetNumberOfPoints() - pointIndex;
+                        g_cutterCallback->SetMaxSteps(remainingPoints);
+
+                        // 创建定时器（如果不存在）
+                        if (g_cutterCallback->TimerId <= 0) {
+                            int timerId = injector->Interactor->CreateRepeatingTimer(intervalMs);
+                            g_cutterCallback->SetTimerId(timerId);
+
+                            // 只需添加一次观察者
+                            injector->Interactor->AddObserver(vtkCommand::TimerEvent,
+                                                              g_cutterCallback);
+                            spdlog::info("Created timer with ID: {}", timerId);
+                        }
+                        else if (intervalChanged) {
+                            // 如果定时器间隔改变，更新定时器
+                            injector->Interactor->DestroyTimer(g_cutterCallback->TimerId);
+                            int timerId = injector->Interactor->CreateRepeatingTimer(intervalMs);
+                            g_cutterCallback->SetTimerId(timerId);
+                            spdlog::info("Timer updated with new interval: {}ms", intervalMs);
+                        }
+
+                        // 没有显式启动方法了，定时器ID存在就是播放状态
+                        spdlog::info("Starting timer animation from point {} with interval {}ms",
+                                     pointIndex,
+                                     intervalMs);
+                    }
+                    ImGui::EndDisabled();
+                    ImGui::SameLine();
+
+                    // Stop button - 只在有效定时器存在时启用
+                    ImGui::BeginDisabled(!g_cutterCallback || g_cutterCallback->TimerId <= 0);
+                    if (ImGui::Button("Stop")) {
+                        if (g_cutterCallback && g_cutterCallback->TimerId > 0) {
+                            // 更新当前索引
+                            pointIndex = g_cutterCallback->CurrentIndex;
+
+                            // 停止动画并销毁定时器
+                            g_cutterCallback->Stop(injector->Interactor);
+                            spdlog::info("Animation stopped manually");
+                        }
+                    }
+                    ImGui::EndDisabled();
                 }
-                // TODO: Use AnimationCue to animate the cutter
             }
         }
         else {
