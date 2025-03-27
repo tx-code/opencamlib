@@ -76,6 +76,9 @@ struct OCLSettings
     double lift_step = DefaultSettings::lift_step;
     double lift_from = DefaultSettings::lift_from;
     double lift_to = DefaultSettings::lift_to;
+    
+    // 随机批量降刀特有设置
+    int random_points = 10000;
 };
 
 // 全局设置对象
@@ -206,6 +209,9 @@ void LoadSettings()
 
                 if (op.contains("lift_to"))
                     g_settings.lift_to = op["lift_to"].get<double>();
+
+                if (op.contains("random_points"))
+                    g_settings.random_points = op["random_points"].get<int>();
             }
 
             spdlog::info("Settings loaded successfully");
@@ -238,7 +244,8 @@ void SaveSettings()
                       {"min_sampling", g_settings.min_sampling},
                       {"lift_step", g_settings.lift_step},
                       {"lift_from", g_settings.lift_from},
-                      {"lift_to", g_settings.lift_to}};
+                      {"lift_to", g_settings.lift_to},
+                      {"random_points", g_settings.random_points}};
 
     std::ofstream file(SETTINGS_JSON);
     if (file.is_open()) {
@@ -459,7 +466,8 @@ void DrawOperationUI(vtkDearImGuiInjector* injector)
         static const char* op_types[] = {"WaterLine",
                                          "AdaptiveWaterLine",
                                          "PathDropCutter",
-                                         "AdaptivePathDropCutter"};
+                                         "AdaptivePathDropCutter",
+                                         "RandomBatchDropCutter"};
 
         // 使用全局设置
         bool changed = false;
@@ -506,6 +514,11 @@ void DrawOperationUI(vtkDearImGuiInjector* injector)
                                               1.0f,
                                               "%.3f");
                 break;
+            case 4:
+                changed |=
+                    ImGui::InputDouble("Sampling", &g_settings.sampling, 0.01f, 1.0f, "%.3f");
+                changed |= ImGui::InputInt("Random Points", &g_settings.random_points, 1000, 10000);
+                break;
             default:
                 break;
         }
@@ -543,6 +556,12 @@ void DrawOperationUI(vtkDearImGuiInjector* injector)
                                                actorManager,
                                                g_settings.sampling,
                                                g_settings.min_sampling);
+                        break;
+                    case 4:
+                        randomBatchDropCutter(modelManager,
+                                               actorManager,
+                                               g_settings.sampling,
+                                               g_settings.random_points);
                         break;
                 }
                 injector->ForceResetCamera();

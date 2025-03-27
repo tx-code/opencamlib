@@ -1,5 +1,9 @@
 ﻿#include "oclUtils.h"
 
+// 添加随机数生成器相关头文件
+#include <random>
+#include <functional>
+
 ocl::Path createGuidePath(const ocl::STLSurf& surface) {
     // Enlarge 5%
     double x_min = surface.bb.minpt.x;
@@ -149,6 +153,48 @@ void pathDropCutter(CAMModelManager& model, vtkActorManager& actorManager, doubl
         actorManager.legendActor->VisibilityOn();
     }
 }
+
+void randomBatchDropCutter(CAMModelManager& model, vtkActorManager& actorManager, double sampling, int randomPoints ) {
+    if (!model.cutter || !model.surface) {
+        spdlog::error("No cutter or surface");
+        return;
+    }
+    spdlog::stopwatch sw;
+    model.operation = std::make_unique<ocl::BatchDropCutter>();
+    auto& bdc = *dynamic_cast<ocl::BatchDropCutter *>(model.operation.get());
+    bdc.setSTL(*model.surface);
+    bdc.setCutter(model.cutter.get());
+    bdc.setSampling(sampling);
+    
+    // Generate random points using modern C++ random generators
+    const auto& minp = model.surface->bb.minpt;
+    const auto& maxp = model.surface->bb.maxpt;
+    
+    // 创建随机数生成器
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    
+    // 为x, y, z坐标创建均匀分布
+    std::uniform_real_distribution<double> dist_x(minp.x, maxp.x);
+    std::uniform_real_distribution<double> dist_y(minp.y, maxp.y);
+    std::uniform_real_distribution<double> dist_z(minp.z, maxp.z);
+    
+    for(int i = 0; i < randomPoints; i++) {
+        ocl::CLPoint p(dist_x(gen), dist_y(gen), dist_z(gen));
+        bdc.appendPoint(p);
+    }
+
+    bdc.run(); 
+    auto points = bdc.getCLPoints();
+    spdlog::info("RBD done in {} ms and got {} points", sw, points.size());
+
+    UpdateCLPointCloudActor(actorManager.operationActor, actorManager.legendActor, points);
+    if (actorManager.operationActor) {
+        actorManager.operationActor->SetObjectName("Random Batch Drop Cutter");
+        actorManager.legendActor->VisibilityOn();
+    }
+}
+
 
 void adaptivePathDropCutter(CAMModelManager& model,
                             vtkActorManager& actorManager,

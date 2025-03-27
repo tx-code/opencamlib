@@ -59,6 +59,8 @@ void adaptiveWaterline(CAMModelManager& model,
 
 void pathDropCutter(CAMModelManager& model, vtkActorManager& actorManager, double sampling);
 
+void randomBatchDropCutter(CAMModelManager& model, vtkActorManager& actorManager, double sampling, int randomPoints );
+
 void adaptivePathDropCutter(CAMModelManager& model,
                             vtkActorManager& actorManager,
                             double sampling,
