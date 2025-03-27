@@ -4,10 +4,14 @@
 #include "OverlayUI.h"
 #include "vtkDearImGuiInjector.h"
 
+#include <algorithm>
 #include <boost/math/constants/constants.hpp>
 #include <codecvt>
+#include <filesystem>
+#include <fstream>
 #include <imgui.h>  // to draw custom UI
 #include <nfd.h>
+#include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
 #include <vtkInteractorObserver.h>
 #include <vtkInteractorStyleSwitch.h>
@@ -15,10 +19,87 @@
 #include <vtkRenderWindowInteractor.h>
 #include <vtkSetGet.h>
 
+
 #include "oclUtils.h"
 
 namespace
 {
+// 最大保存的最近文件数量
+constexpr int MAX_RECENT_FILES = 10;
+// 存储最近打开的文件路径
+std::vector<std::string> g_recentFiles;
+
+// 存储JSON文件的路径
+constexpr char RECENT_FILES_JSON[] = "recent_files.json";
+
+// 从JSON文件加载最近文件列表
+void LoadRecentFiles()
+{
+    g_recentFiles.clear();
+    std::ifstream file(RECENT_FILES_JSON);
+
+    if (file.is_open()) {
+        try {
+            nlohmann::json j;
+            file >> j;
+
+            if (j.contains("recent_files") && j["recent_files"].is_array()) {
+                for (const auto& path : j["recent_files"]) {
+                    if (path.is_string()) {
+                        std::string filePath = path.get<std::string>();
+                        // 检查文件是否存在
+                        if (std::filesystem::exists(filePath)) {
+                            g_recentFiles.push_back(filePath);
+                        }
+                    }
+                }
+            }
+        }
+        catch (const std::exception& e) {
+            spdlog::error("Error parsing recent files JSON: {}", e.what());
+        }
+        file.close();
+    }
+}
+
+// 保存最近文件列表到JSON文件
+void SaveRecentFiles()
+{
+    nlohmann::json j;
+    j["recent_files"] = g_recentFiles;
+
+    std::ofstream file(RECENT_FILES_JSON);
+    if (file.is_open()) {
+        file << j.dump(4);  // 使用4个空格缩进
+        file.close();
+        spdlog::debug("Recent files saved to {}", RECENT_FILES_JSON);
+    }
+    else {
+        spdlog::error("Failed to save recent files to {}", RECENT_FILES_JSON);
+    }
+}
+
+// 添加文件到最近文件列表
+void AddToRecentFiles(const std::string& filePath)
+{
+    // 如果已经在列表中，先移除
+    auto it = std::find(g_recentFiles.begin(), g_recentFiles.end(), filePath);
+    if (it != g_recentFiles.end()) {
+        g_recentFiles.erase(it);
+    }
+
+    // 添加到列表开头
+    g_recentFiles.insert(g_recentFiles.begin(), filePath);
+
+    // 限制列表大小
+    if (g_recentFiles.size() > MAX_RECENT_FILES) {
+        g_recentFiles.resize(MAX_RECENT_FILES);
+    }
+
+    // 保存到JSON文件
+    SaveRecentFiles();
+}
+
 //------------------------------------------------------------------------------
 std::wstring to_wstring(const char* str)
 {
@@ -61,6 +142,11 @@ void DrawCAMExample(vtkDearImGuiInjector* injector)
                 ocl::STLReader reader(to_wstring(outPath), *modelManager.surface);
                 UpdateStlSurfActor(actorManager.modelActor, *modelManager.surface);
                 injector->ForceResetCamera();
+
+                // 保存文件路径并添加到最近文件列表
+                modelManager.stlFilePath = outPath;
+                AddToRecentFiles(outPath);
+
                 NFD_FreePathU8(outPath);
             }
             else if (result == NFD_CANCEL) {
@@ -75,6 +161,37 @@ void DrawCAMExample(vtkDearImGuiInjector* injector)
             }
 
             NFD_Quit();
+        }
+
+        ImGui::SameLine();
+
+        // 最近文件下拉菜单
+        if (ImGui::BeginMenu("Recent Files")) {
+            if (g_recentFiles.empty()) {
+                ImGui::Text("No recent files");
+            }
+            else {
+                for (const auto& filePath : g_recentFiles) {
+                    if (ImGui::MenuItem(filePath.c_str())) {
+                        // 加载选择的文件
+                        modelManager.surface = std::make_unique<ocl::STLSurf>();
+                        ocl::STLReader reader(to_wstring(filePath.c_str()), *modelManager.surface);
+                        UpdateStlSurfActor(actorManager.modelActor, *modelManager.surface);
+                        injector->ForceResetCamera();
+
+                        // 更新当前文件路径并重新排序最近文件列表
+                        modelManager.stlFilePath = filePath;
+                        // AddToRecentFiles(filePath);
+                    }
+                }
+
+                ImGui::Separator();
+                if (ImGui::MenuItem("Clear Recent Files")) {
+                    g_recentFiles.clear();
+                    SaveRecentFiles();
+                }
+            }
+            ImGui::EndMenu();
         }
 
         if (ImGui::Button("Add Cutter")) {
@@ -268,6 +385,11 @@ void DrawCAMExample(vtkDearImGuiInjector* injector)
             auto model = actorManager.modelActor;
             ImGui::Text(model->GetObjectName().c_str());
 
+            // 显示当前STL文件路径
+            if (!modelManager.stlFilePath.empty()) {
+                ImGui::TextWrapped("File: %s", modelManager.stlFilePath.c_str());
+            }
+
             // Bbox
             auto bbox = model->GetBounds();
             ImGui::Text("Bbox: Min(%.2f, %.2f, %.2f), Max(%.2f, %.2f, %.2f)",
@@ -373,6 +495,9 @@ void OverlayUI::setup(vtkObject* caller, unsigned long, void*, void* callData)
         style.TabRounding = 8;
         style.WindowRounding = 8;
         style.FrameBorderSize = 1.f;
+
+        // 从ini文件加载最近文件列表
+        LoadRecentFiles();
     }
     else {
         vtkErrorWithObjectMacro(overlay_,

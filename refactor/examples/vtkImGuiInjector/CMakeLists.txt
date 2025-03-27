@@ -3,6 +3,7 @@ message(STATUS "Configuring vtkImGuiInjector")
 
 find_package(glad REQUIRED)
 find_package(nfd REQUIRED)
+find_package(nlohmann_json REQUIRED)
 
 # the imgui should be installed with the glfw3 and opengl3 bindings
 # vcpkg install imgui[glfw-binding, opengl3-binding]
@@ -66,4 +67,4 @@ endif()
 
 message(STATUS "VTK Version: ${VTK_VERSION}")
 
-target_link_libraries(vtkImGuiInjector PRIVATE imgui::imgui ${VTK_LIBRARIES} glad::glad ocl nfd::nfd)
+target_link_libraries(vtkImGuiInjector PRIVATE imgui::imgui ${VTK_LIBRARIES} glad::glad ocl nfd::nfd nlohmann_json::nlohmann_json)

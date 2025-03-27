@@ -4,6 +4,9 @@
 #include <memory>
 #include <spdlog/spdlog.h>
 #include <spdlog/stopwatch.h>
+#include <string>
+#include <vector>
+
 
 #include "vtkUtils.h"
 
@@ -23,10 +26,12 @@
 #include "geo/stlsurf.hpp"
 #include "ocl.hpp"
 
-struct CAMModelManager {
+struct CAMModelManager
+{
     std::unique_ptr<ocl::STLSurf> surface;
     std::unique_ptr<ocl::MillingCutter> cutter;
     std::unique_ptr<ocl::Operation> operation;
+    std::string stlFilePath;  // 当前打开的STL文件路径
 };
 
 void hello_ocl();
