@@ -31,6 +31,53 @@ std::vector<std::string> g_recentFiles;
 
 // 存储JSON文件的路径
 constexpr char RECENT_FILES_JSON[] = "recent_files.json";
+constexpr char SETTINGS_JSON[] = "ocl_settings.json";
+
+// 默认设置值
+namespace DefaultSettings
+{
+// Cutter设置
+constexpr int cutter_type_index = 0;
+constexpr double diameter = 2.0;
+constexpr double length = 10.0;
+constexpr double radius = 0.1;
+// 使用函数获取默认值，因为不能用constexpr存储计算结果
+double default_angle_in_deg()
+{
+    using namespace boost::math::constants;
+    return radian<double>() * third_pi<double>();
+}
+
+// Operation设置
+constexpr int op_type_index = 0;
+constexpr double sampling = 0.1;
+constexpr double min_sampling = 0.01;
+constexpr double lift_step = 0.1;
+constexpr double lift_from = 0.0;
+constexpr double lift_to = 1.0;
+}  // namespace DefaultSettings
+
+// Cutter和Operation的设置
+struct OCLSettings
+{
+    // Cutter设置
+    int cutter_type_index = DefaultSettings::cutter_type_index;
+    double diameter = DefaultSettings::diameter;
+    double length = DefaultSettings::length;
+    double angle_in_deg = DefaultSettings::default_angle_in_deg();
+    double radius = DefaultSettings::radius;
+
+    // Operation设置
+    int op_type_index = DefaultSettings::op_type_index;
+    double sampling = DefaultSettings::sampling;
+    double min_sampling = DefaultSettings::min_sampling;
+    double lift_step = DefaultSettings::lift_step;
+    double lift_from = DefaultSettings::lift_from;
+    double lift_to = DefaultSettings::lift_to;
+};
+
+// 全局设置对象
+OCLSettings g_settings;
 
 // 从JSON文件加载最近文件列表
 void LoadRecentFiles()
@@ -98,6 +145,100 @@ void AddToRecentFiles(const std::string& filePath)
 
     // 保存到JSON文件
     SaveRecentFiles();
+}
+
+// 从JSON文件加载设置
+void LoadSettings()
+{
+    std::ifstream file(SETTINGS_JSON);
+
+    if (file.is_open()) {
+        try {
+            nlohmann::json j;
+            file >> j;
+
+            // 加载Cutter设置
+            if (j.contains("cutter")) {
+                auto& cutter = j["cutter"];
+                if (cutter.contains("type_index"))
+                    g_settings.cutter_type_index = cutter["type_index"].get<int>();
+
+                if (cutter.contains("diameter"))
+                    g_settings.diameter = cutter["diameter"].get<double>();
+
+                if (cutter.contains("length"))
+                    g_settings.length = cutter["length"].get<double>();
+
+                if (cutter.contains("angle_in_deg"))
+                    g_settings.angle_in_deg = cutter["angle_in_deg"].get<double>();
+
+                if (cutter.contains("radius"))
+                    g_settings.radius = cutter["radius"].get<double>();
+            }
+
+            // 加载Operation设置
+            if (j.contains("operation")) {
+                auto& op = j["operation"];
+                if (op.contains("type_index"))
+                    g_settings.op_type_index = op["type_index"].get<int>();
+
+                if (op.contains("sampling"))
+                    g_settings.sampling = op["sampling"].get<double>();
+
+                if (op.contains("min_sampling"))
+                    g_settings.min_sampling = op["min_sampling"].get<double>();
+
+                if (op.contains("lift_step"))
+                    g_settings.lift_step = op["lift_step"].get<double>();
+
+                if (op.contains("lift_from"))
+                    g_settings.lift_from = op["lift_from"].get<double>();
+
+                if (op.contains("lift_to"))
+                    g_settings.lift_to = op["lift_to"].get<double>();
+            }
+
+            spdlog::info("Settings loaded from {}", SETTINGS_JSON);
+        }
+        catch (const std::exception& e) {
+            spdlog::error("Error parsing settings JSON: {}", e.what());
+        }
+        file.close();
+    }
+    else {
+        spdlog::info("No settings file found, using defaults");
+    }
+}
+
+// 保存设置到JSON文件
+void SaveSettings()
+{
+    nlohmann::json j;
+
+    // 保存Cutter设置
+    j["cutter"] = {{"type_index", g_settings.cutter_type_index},
+                   {"diameter", g_settings.diameter},
+                   {"length", g_settings.length},
+                   {"angle_in_deg", g_settings.angle_in_deg},
+                   {"radius", g_settings.radius}};
+
+    // 保存Operation设置
+    j["operation"] = {{"type_index", g_settings.op_type_index},
+                      {"sampling", g_settings.sampling},
+                      {"min_sampling", g_settings.min_sampling},
+                      {"lift_step", g_settings.lift_step},
+                      {"lift_from", g_settings.lift_from},
+                      {"lift_to", g_settings.lift_to}};
+
+    std::ofstream file(SETTINGS_JSON);
+    if (file.is_open()) {
+        file << j.dump(4);  // 使用4个空格缩进
+        file.close();
+        spdlog::debug("Settings saved to {}", SETTINGS_JSON);
+    }
+    else {
+        spdlog::error("Failed to save settings to {}", SETTINGS_JSON);
+    }
 }
 
 //------------------------------------------------------------------------------
@@ -203,57 +344,69 @@ void DrawCAMExample(vtkDearImGuiInjector* injector)
                                                  "BallCutter",
                                                  "BullCutter",
                                                  "ConeCutter"};
-            static int cutter_type_index = 0;
-            ImGui::Combo("Cutter Types",
-                         &cutter_type_index,
-                         cutter_types,
-                         IM_ARRAYSIZE(cutter_types));
+
+            // 使用全局设置
+            bool changed = false;
+
+            changed |= ImGui::Combo("Cutter Types",
+                                    &g_settings.cutter_type_index,
+                                    cutter_types,
+                                    IM_ARRAYSIZE(cutter_types));
 
             using namespace boost::math::constants;
-            static double diameter = 2.0;
-            static double length = 10.0;
-            static double angle_in_deg =
-                radian<double>() * third_pi<double>();  // cone cutter need this
-            static double radius = 0.1;                 // bull cutter need this
-            if (cutter_type_index == 0) {
-                ImGui::InputDouble("Diameter", &diameter, 0.01f, 1.0f, "%.3f");
-                ImGui::InputDouble("Length", &length, 0.01f, 1.0f, "%.3f");
+
+            if (g_settings.cutter_type_index == 0) {
+                changed |=
+                    ImGui::InputDouble("Diameter", &g_settings.diameter, 0.01f, 1.0f, "%.3f");
+                changed |= ImGui::InputDouble("Length", &g_settings.length, 0.01f, 1.0f, "%.3f");
             }
-            else if (cutter_type_index == 1) {
-                ImGui::InputDouble("Diameter", &diameter, 0.01f, 1.0f, "%.3f");
-                ImGui::InputDouble("Length", &length, 0.01f, 1.0f, "%.3f");
+            else if (g_settings.cutter_type_index == 1) {
+                changed |=
+                    ImGui::InputDouble("Diameter", &g_settings.diameter, 0.01f, 1.0f, "%.3f");
+                changed |= ImGui::InputDouble("Length", &g_settings.length, 0.01f, 1.0f, "%.3f");
             }
-            else if (cutter_type_index == 2) {
-                ImGui::InputDouble("Diameter", &diameter, 0.01f, 1.0f, "%.3f");
-                ImGui::InputDouble("Length", &length, 0.01f, 1.0f, "%.3f");
-                ImGui::InputDouble("Radius", &radius, 0.01f, 1.0f, "%.3f");
+            else if (g_settings.cutter_type_index == 2) {
+                changed |=
+                    ImGui::InputDouble("Diameter", &g_settings.diameter, 0.01f, 1.0f, "%.3f");
+                changed |= ImGui::InputDouble("Length", &g_settings.length, 0.01f, 1.0f, "%.3f");
+                changed |= ImGui::InputDouble("Radius", &g_settings.radius, 0.01f, 1.0f, "%.3f");
             }
-            else if (cutter_type_index == 3) {
-                ImGui::InputDouble("Diameter", &diameter, 0.01f, 1.0f, "%.3f");
-                ImGui::InputDouble("Length", &length, 0.01f, 1.0f, "%.3f");
-                ImGui::InputDouble("Angle", &angle_in_deg, 0.01f, 1.0f, "%.3f");
+            else if (g_settings.cutter_type_index == 3) {
+                changed |=
+                    ImGui::InputDouble("Diameter", &g_settings.diameter, 0.01f, 1.0f, "%.3f");
+                changed |= ImGui::InputDouble("Length", &g_settings.length, 0.01f, 1.0f, "%.3f");
+                changed |=
+                    ImGui::InputDouble("Angle", &g_settings.angle_in_deg, 0.01f, 1.0f, "%.3f");
+            }
+
+            // 如果有变化，保存设置
+            if (changed) {
+                SaveSettings();
             }
 
             if (ImGui::Button("Ok")) {
                 // According the cutter_type_index, change the cutter type
-                if (cutter_type_index == 0) {
-                    modelManager.cutter = std::make_unique<ocl::CylCutter>(diameter, length);
+                if (g_settings.cutter_type_index == 0) {
+                    modelManager.cutter =
+                        std::make_unique<ocl::CylCutter>(g_settings.diameter, g_settings.length);
                     spdlog::info("CylCutter created: {}", modelManager.cutter->str());
                 }
-                else if (cutter_type_index == 1) {
-                    modelManager.cutter = std::make_unique<ocl::BallCutter>(diameter, length);
+                else if (g_settings.cutter_type_index == 1) {
+                    modelManager.cutter =
+                        std::make_unique<ocl::BallCutter>(g_settings.diameter, g_settings.length);
                     spdlog::info("BallCutter created: {}", modelManager.cutter->str());
                 }
-                else if (cutter_type_index == 2) {
-                    modelManager.cutter =
-                        std::make_unique<ocl::BullCutter>(diameter, radius, length);
+                else if (g_settings.cutter_type_index == 2) {
+                    modelManager.cutter = std::make_unique<ocl::BullCutter>(g_settings.diameter,
+                                                                            g_settings.radius,
+                                                                            g_settings.length);
                     spdlog::info("BullCutter created: {}", modelManager.cutter->str());
                 }
-                else if (cutter_type_index == 3) {
-                    modelManager.cutter =
-                        std::make_unique<ocl::ConeCutter>(diameter,
-                                                          degree<double>() * angle_in_deg,
-                                                          length);
+                else if (g_settings.cutter_type_index == 3) {
+                    modelManager.cutter = std::make_unique<ocl::ConeCutter>(
+                        g_settings.diameter,
+                        degree<double>() * g_settings.angle_in_deg,
+                        g_settings.length);
                     spdlog::info("ConeCutter created: {}", modelManager.cutter->str());
                 }
                 UpdateCutterActor(actorManager.cutterActor,
@@ -278,68 +431,91 @@ void DrawCAMExample(vtkDearImGuiInjector* injector)
                                              "AdaptiveWaterLine",
                                              "PathDropCutter",
                                              "AdaptivePathDropCutter"};
-            static int op_type_index = 0;
-            ImGui::Combo("Operation Types", &op_type_index, op_types, IM_ARRAYSIZE(op_types));
 
-            static double sampling = 0.1;
-            static double min_sampling = 0.01;  // adaptive waterline need this
-            static double lift_step = 0.1;
-            static double lift_from = 0.0;
-            static double lift_to = 1;
+            // 使用全局设置
+            bool changed = false;
 
-            switch (op_type_index) {
+            changed |= ImGui::Combo("Operation Types",
+                                    &g_settings.op_type_index,
+                                    op_types,
+                                    IM_ARRAYSIZE(op_types));
+
+            switch (g_settings.op_type_index) {
                 case 0:
-                    ImGui::InputDouble("Sampling", &sampling, 0.01f, 1.0f, "%.3f");
-                    ImGui::InputDouble("Lift Step", &lift_step, 0.01f, 1.0f, "%.3f");
-                    ImGui::InputDouble("Lift From", &lift_from, 0.01f, 1.0f, "%.3f");
-                    ImGui::InputDouble("Lift To", &lift_to, 0.01f, 1.0f, "%.3f");
+                    changed |=
+                        ImGui::InputDouble("Sampling", &g_settings.sampling, 0.01f, 1.0f, "%.3f");
+                    changed |=
+                        ImGui::InputDouble("Lift Step", &g_settings.lift_step, 0.01f, 1.0f, "%.3f");
+                    changed |=
+                        ImGui::InputDouble("Lift From", &g_settings.lift_from, 0.01f, 1.0f, "%.3f");
+                    changed |=
+                        ImGui::InputDouble("Lift To", &g_settings.lift_to, 0.01f, 1.0f, "%.3f");
                     break;
                 case 1:
-                    ImGui::InputDouble("Sampling", &sampling, 0.01f, 1.0f, "%.3f");
-                    ImGui::InputDouble("Min Sampling", &min_sampling, 0.01f, 1.0f, "%.3f");
-                    ImGui::InputDouble("Lift Step", &lift_step, 0.01f, 1.0f, "%.3f");
-                    ImGui::InputDouble("Lift From", &lift_from, 0.01f, 1.0f, "%.3f");
-                    ImGui::InputDouble("Lift To", &lift_to, 0.01f, 1.0f, "%.3f");
+                    changed |=
+                        ImGui::InputDouble("Sampling", &g_settings.sampling, 0.01f, 1.0f, "%.3f");
+                    changed |= ImGui::InputDouble("Min Sampling",
+                                                  &g_settings.min_sampling,
+                                                  0.01f,
+                                                  1.0f,
+                                                  "%.3f");
+                    changed |=
+                        ImGui::InputDouble("Lift Step", &g_settings.lift_step, 0.01f, 1.0f, "%.3f");
+                    changed |=
+                        ImGui::InputDouble("Lift From", &g_settings.lift_from, 0.01f, 1.0f, "%.3f");
+                    changed |=
+                        ImGui::InputDouble("Lift To", &g_settings.lift_to, 0.01f, 1.0f, "%.3f");
                     break;
                 case 2:
-                    ImGui::InputDouble("Sampling", &sampling, 0.01f, 1.0f, "%.3f");
+                    changed |=
+                        ImGui::InputDouble("Sampling", &g_settings.sampling, 0.01f, 1.0f, "%.3f");
                     break;
                 case 3:
-                    ImGui::InputDouble("Sampling", &sampling, 0.01f, 1.0f, "%.3f");
-                    ImGui::InputDouble("Min Sampling", &min_sampling, 0.01f, 1.0f, "%.3f");
+                    changed |=
+                        ImGui::InputDouble("Sampling", &g_settings.sampling, 0.01f, 1.0f, "%.3f");
+                    changed |= ImGui::InputDouble("Min Sampling",
+                                                  &g_settings.min_sampling,
+                                                  0.01f,
+                                                  1.0f,
+                                                  "%.3f");
                     break;
                 default:
                     break;
             }
 
+            // 如果有变化，保存设置
+            if (changed) {
+                SaveSettings();
+            }
+
             if (ImGui::Button("Run Operation")) {
                 if (modelManager.cutter && modelManager.surface) {
-                    switch (op_type_index) {
+                    switch (g_settings.op_type_index) {
                         case 0:
                             waterline(modelManager,
                                       actorManager,
-                                      sampling,
-                                      lift_to,
-                                      lift_step,
-                                      lift_from);
+                                      g_settings.sampling,
+                                      g_settings.lift_to,
+                                      g_settings.lift_step,
+                                      g_settings.lift_from);
                             break;
                         case 1:
                             adaptiveWaterline(modelManager,
                                               actorManager,
-                                              sampling,
-                                              min_sampling,
-                                              lift_to,
-                                              lift_step,
-                                              lift_from);
+                                              g_settings.sampling,
+                                              g_settings.min_sampling,
+                                              g_settings.lift_to,
+                                              g_settings.lift_step,
+                                              g_settings.lift_from);
                             break;
                         case 2:
-                            pathDropCutter(modelManager, actorManager, sampling);
+                            pathDropCutter(modelManager, actorManager, g_settings.sampling);
                             break;
                         case 3:
                             adaptivePathDropCutter(modelManager,
                                                    actorManager,
-                                                   sampling,
-                                                   min_sampling);
+                                                   g_settings.sampling,
+                                                   g_settings.min_sampling);
                             break;
                     }
                     injector->ForceResetCamera();
@@ -496,8 +672,9 @@ void OverlayUI::setup(vtkObject* caller, unsigned long, void*, void* callData)
         style.WindowRounding = 8;
         style.FrameBorderSize = 1.f;
 
-        // 从ini文件加载最近文件列表
+        // 从JSON文件加载最近文件列表和设置
         LoadRecentFiles();
+        LoadSettings();
     }
     else {
         vtkErrorWithObjectMacro(overlay_,
