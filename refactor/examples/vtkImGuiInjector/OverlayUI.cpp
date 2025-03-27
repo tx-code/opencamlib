@@ -20,6 +20,7 @@
 #include <vtkSetGet.h>
 
 #include "CutterTimerCallback.h"
+#include "STLSurfUtils.h"
 #include "oclUtils.h"
 
 
@@ -626,6 +627,14 @@ void DrawDataModelUI(vtkDearImGuiInjector* injector)
             static double _max = 1;
             if (ImGui::SliderScalar("Transparency", ImGuiDataType_Double, &trans, &_min, &_max)) {
                 model->GetProperty()->SetOpacity(1 - trans);
+            }
+
+            // Random Perturbation
+            static double max_move_distance = 0.01;
+            ImGui::InputDouble("Max Move Distance", &max_move_distance, 0.01f, 1.0f, "%.3f");
+            if (ImGui::Button("Random Perturbation")) {
+                RandomPerturbation(*modelManager.surface, max_move_distance, true);
+                UpdateStlSurfActor(actorManager.modelActor, *modelManager.surface);
             }
         }
         else {

@@ -53,6 +53,7 @@ add_executable(vtkImGuiInjector
     vtkDearImGuiInjector.cpp
     vtkUtils.cpp
     oclUtils.cpp
+    STLSurfUtils.cpp
 )
 
 if(VTK_VERSION VERSION_LESS "9.0.0")
