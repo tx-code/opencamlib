@@ -19,7 +19,6 @@
 #include <vtkRenderWindowInteractor.h>
 #include <vtkSetGet.h>
 
-
 #include "oclUtils.h"
 
 namespace
@@ -637,12 +636,43 @@ void DrawCAMExample(vtkDearImGuiInjector* injector)
         ImGui::SetNextItemOpen(true, ImGuiCond_Once);
     }
     if (ImGui::TreeNode("Operations")) {
-        if (modelManager.operation) {
+        if (auto& op = modelManager.operation) {
             auto operation = actorManager.operationActor;
             ImGui::Text(operation->GetObjectName().c_str());
             bool visible = operation->GetVisibility();
             ImGui::Checkbox("Show Operation", &visible);
             operation->SetVisibility(visible);
+
+            // TODO: 将Source、Mapper、Actor封装到一起
+            auto* mapper = operation->GetMapper();
+            assert(mapper);
+
+            auto* polyData = vtkPolyData::SafeDownCast(mapper->GetInput());
+            if (polyData) {
+                auto* points = polyData->GetPoints();
+                auto* lines = polyData->GetLines();
+
+                ImGui::Text("Points: %d, Lines: %d, Polys: %d",
+                            points->GetNumberOfPoints(),
+                            lines->GetNumberOfCells());
+
+                // Use a int slider to "move" the cutter to the specified point
+                static int pointIndex = 0;
+                static bool checkCutterLocation = false;
+                ImGui::Checkbox("Check Cutter Location", &checkCutterLocation);
+                if (checkCutterLocation) {
+                    ImGui::Text("Move the cutter to the specified point");
+                    if (ImGui::SliderInt("Point Index",
+                                         &pointIndex,
+                                         0,
+                                         points->GetNumberOfPoints() - 1)) {
+                        auto* point = points->GetPoint(pointIndex);
+
+                        actorManager.cutterActor->SetPosition(point);
+                    }
+                }
+                // TODO: Use AnimationCue to animate the cutter
+            }
         }
         else {
             ImGui::TextDisabled("No Operation");
