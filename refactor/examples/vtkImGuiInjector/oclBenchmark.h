@@ -1,8 +1,6 @@
 ﻿#pragma once
 
 #include "dropcutter/batchdropcutter.hpp"
-#include "geo/stlsurf.hpp"
-#include "geo/triangle.hpp"
 #include "oclUtils.h"
 
 // Initialize a dedicated benchmark logger that outputs to a separate file
@@ -14,6 +12,3 @@ void run_batchdropcutter(const CAMModelManager& model, bool verbose = true);
 
 // Use Subdivision algorithm to subdivide the surface, Up to 1e7 facets
 void run_SurfaceSubdivisionBatchDropCutter(const CAMModelManager& model, bool verbose = true);
-
-// VS KDTree and AABBTree
-void run_CustomKDTreeVSAABBTree(const CAMModelManager& model, bool verbose = true);

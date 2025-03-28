@@ -862,14 +862,7 @@ void DrawCAMExample(vtkDearImGuiInjector* injector)
                     spdlog::error("No cutter or surface");
                 }
             }
-            if (ImGui::Button("Run CustomKDTreeVSAABBTree")) {
-                if (modelManager.cutter && modelManager.surface) {
-                    run_CustomKDTreeVSAABBTree(modelManager, verbose);
-                }
-                else {
-                    spdlog::error("No cutter or surface");
-                }
-            }
+
             ImGui::EndMenu();
         }
         ImGui::EndMenu();

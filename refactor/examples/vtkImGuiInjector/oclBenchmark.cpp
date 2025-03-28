@@ -7,10 +7,7 @@
 #include <tbb/parallel_for.h>
 
 
-#include "AABBTreeAdaptor.h"
 #include "STLSurfUtils.h"
-#include "common/kdtree.hpp"
-
 
 namespace
 {
@@ -35,23 +32,6 @@ void generate_points(const ocl::STLSurf& surface, int max_points, std::vector<oc
     points.resize(max_points);
     for (int i = 0; i < max_points; i++) {
         points[i] = std::move(ocl::CLPoint(dist_x(gen), dist_y(gen), dist_z(gen)));
-    }
-}
-
-void create_random_bbox(const ocl::STLSurf& surface, int num_bboxes, std::vector<ocl::Bbox>& bboxes)
-{
-    // 创建随机数生成器
-    std::random_device rd;
-    std::mt19937 gen(rd());
-
-    // 为x, y, z坐标创建均匀分布
-    std::uniform_real_distribution<double> dist_x(surface.bb.minpt.x, surface.bb.maxpt.x);
-    std::uniform_real_distribution<double> dist_y(surface.bb.minpt.y, surface.bb.maxpt.y);
-    std::uniform_real_distribution<double> dist_z(surface.bb.minpt.z, surface.bb.maxpt.z);
-
-    bboxes.resize(num_bboxes);
-    for (int i = 0; i < num_bboxes; i++) {
-        bboxes[i] = ocl::Bbox(dist_x(gen), dist_y(gen), dist_z(gen), dist_x(gen), dist_y(gen), dist_z(gen));
     }
 }
 
@@ -101,8 +81,7 @@ void run_batchdropcutter(const CAMModelManager& model, bool verbose)
         init_benchmark_logger();
     }
 
-    benchmark_logger->info(
-        "=====Begin Benchmark: Batchdropcutter With Different Number of Points=====");
+    benchmark_logger->info("=====Begin Benchmark=====");
     benchmark_logger->info("Use Cutter {} and Surface {} (#F: {})",
                            model.cutter->str(),
                            model.stlFilePath,
@@ -173,7 +152,7 @@ void run_SurfaceSubdivisionBatchDropCutter(const CAMModelManager& model, bool ve
         init_benchmark_logger();
     }
 
-    benchmark_logger->info("=====Begin Benchmark: Surface Subdivision Batchdropcutter=====");
+    benchmark_logger->info("=====Begin Benchmark=====");
     benchmark_logger->info("Use Cutter {} and Surface {} (#F: {})",
                            model.cutter->str(),
                            model.stlFilePath,
@@ -218,57 +197,5 @@ void run_SurfaceSubdivisionBatchDropCutter(const CAMModelManager& model, bool ve
         // update the surface
         SubdivideSurface(surface_copy);
     }
-    benchmark_logger->info("=====End Benchmark=====");
-}
-
-
-void run_CustomKDTreeVSAABBTree(const CAMModelManager& model, bool verbose)
-{
-    // 如果logger未初始化，则初始化它
-    if (!benchmark_logger) {
-        init_benchmark_logger();
-    }
-
-    warmup_tbb();
-
-    benchmark_logger->info("=====Begin Benchmark: CustomKDTree vs AABBTree=====");
-    benchmark_logger->info("Use Cutter {} and Surface {} (#F: {})",
-                           model.cutter->str(),
-                           model.stlFilePath,
-                           model.surface->tris.size());
-
-    benchmark_logger->info("Compare the build time");
-    spdlog::stopwatch sw;
-    // 使用CustomKDTree构建kd-tree
-    ocl::KDTree<ocl::Triangle> kdTree;
-    kdTree.setXYDimensions();
-    kdTree.setBucketSize(1);
-    kdTree.build(model.surface->tris);
-    benchmark_logger->info("CustomKDTree build time: {} ms", sw);
-
-
-    // 使用AABBTree构建aabb-tree
-    ocl::AABBTreeLibIGL<ocl::Triangle> aabbTree;
-    aabbTree.setXYDimensions();
-    aabbTree.build(model.surface->tris);
-    benchmark_logger->info("AABBTree build time: {} ms", sw);
-
-    // Create 1e5 random bbox;
-    int num_bboxes = 100000;
-    benchmark_logger->info("Compare the performance in searching {} bboxes", num_bboxes);
-    std::vector<ocl::Bbox> bboxes;
-    create_random_bbox(*model.surface, num_bboxes, bboxes);
-
-    sw.reset();
-    for (const auto& bb : bboxes) {
-        kdTree.search(bb);
-    }
-    benchmark_logger->info("CustomKDTree search time: {} ms", sw);
-
-    for (const auto& bb : bboxes) {
-        aabbTree.search(bb);
-    }
-    benchmark_logger->info("AABBTree search time: {} ms", sw);
-
     benchmark_logger->info("=====End Benchmark=====");
 }
