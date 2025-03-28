@@ -43,47 +43,47 @@ namespace ocl {
 ///
 
 /// return 1 of x>0, return -1 if x<0.
-double sign(double x);
+OCL_API double sign(double x);
 
 /// return x*x
-inline double square(double x) { return x * x; }
+OCL_API inline double square(double x) { return x * x; }
 
 /// return true if x is negative
-bool isNegative(double x);
+OCL_API bool isNegative(double x);
 
 /// return true if x is negative
-bool isPositive(double x);
+OCL_API bool isPositive(double x);
 
 /// return true if x is zero, to within tolerance
-bool isZero_tol(double x);
+OCL_API bool isZero_tol(double x);
 
 /// returns machine-epsilon
 /// eps is such that 1 < 1 + eps
 /// but 1 == 1 + eps/2
-double eps();
+OCL_API double eps();
 
-double epsD(double x);
-float epsF(float x);
+OCL_API double epsD(double x);
+OCL_API float epsF(float x);
 
 /// assertion with error message
-void assert_msg(bool assertion, std::string message);
+OCL_API void assert_msg(bool assertion, std::string message);
 
 /// solves 2x2 matrix system Ax=y, solution is x = Ainv * y
 ///  [ a  b ] [u] = [ e ]
 ///  [ c  d ] [v] = [ f ]
 
-bool two_by_two_solver(const double &a, const double &b, const double &c,
+OCL_API bool two_by_two_solver(const double &a, const double &b, const double &c,
                        const double &d, const double &e, const double &f,
                        double &u, double &v);
 
 /// returns intersection in XY plane btw. lines p1,p2 and p3,p4
 /// line1 is   p1 + v * (p2-p1)
 /// line2 is   p3 + t * (p4-p3)
-bool xy_line_line_intersection(const Point &p1, const Point &p2, double &v,
+OCL_API bool xy_line_line_intersection(const Point &p1, const Point &p2, double &v,
                                const Point &p3, const Point &p4, double &t);
 
 /// convert the direction (x,y) into a diangle
-double xyVectorToDiangle(double x, double y);
+OCL_API double xyVectorToDiangle(double x, double y);
 
 } // namespace ocl
 #endif

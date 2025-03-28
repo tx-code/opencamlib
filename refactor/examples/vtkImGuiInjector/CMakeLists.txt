@@ -70,4 +70,11 @@ endif()
 
 message(STATUS "VTK Version: ${VTK_VERSION}")
 
-target_link_libraries(vtkImGuiInjector PRIVATE imgui::imgui ${VTK_LIBRARIES} glad::glad ocl nfd::nfd nlohmann_json::nlohmann_json)
+target_link_libraries(vtkImGuiInjector PRIVATE
+    imgui::imgui
+    ${VTK_LIBRARIES}
+    glad::glad
+    ocl
+    nfd::nfd
+    nlohmann_json::nlohmann_json
+    nanoflann::nanoflann)
