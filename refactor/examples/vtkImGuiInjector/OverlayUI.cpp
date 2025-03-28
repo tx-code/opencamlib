@@ -848,12 +848,7 @@ void DrawCAMExample(vtkDearImGuiInjector* injector)
             ImGui::Checkbox("Verbose", &verbose);
             if (ImGui::Button("Run BatchDropCutter")) {
                 if (modelManager.cutter && modelManager.surface) {
-                    spdlog::info("=====Begin Benchmark=====");
-                    spdlog::info("Use Cutter {} and Surface {}",
-                                 modelManager.cutter->str(),
-                                 modelManager.stlFilePath);
-                    run_batchdropcutter(*modelManager.surface, *modelManager.cutter, verbose);
-                    spdlog::info("=====End Benchmark=====");
+                    run_batchdropcutter(modelManager, verbose);
                 }
                 else {
                     spdlog::error("No cutter or surface");
@@ -861,14 +856,7 @@ void DrawCAMExample(vtkDearImGuiInjector* injector)
             }
             if (ImGui::Button("Run SurfaceSubdivisionBatchDropCutter")) {
                 if (modelManager.cutter && modelManager.surface) {
-                    spdlog::info("=====Begin Benchmark=====");
-                    spdlog::info("Use Cutter {} and Surface {}",
-                                 modelManager.cutter->str(),
-                                 modelManager.stlFilePath);
-                    run_SurfaceSubdivisionBatchDropCutter(*modelManager.surface,
-                                                         *modelManager.cutter,
-                                                         verbose);
-                    spdlog::info("=====End Benchmark=====");
+                    run_SurfaceSubdivisionBatchDropCutter(modelManager, verbose);
                 }
                 else {
                     spdlog::error("No cutter or surface");

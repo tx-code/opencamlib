@@ -1,13 +1,19 @@
 ﻿#include "oclBenchmark.h"
 #include <random>
+#include <spdlog/sinks/basic_file_sink.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
 #include <spdlog/stopwatch.h>
 #include <tbb/parallel_for.h>
+
 
 #include "STLSurfUtils.h"
 
 namespace
 {
+// 定义全局的benchmark logger
+std::shared_ptr<spdlog::logger> benchmark_logger;
+
 void generate_points(const ocl::STLSurf& surface, int max_points, std::vector<ocl::CLPoint>& points)
 {
     // Generate random points using modern C++ random generators
@@ -38,10 +44,49 @@ void warmup_tbb()
 }
 }  // namespace
 
-void run_batchdropcutter(const ocl::STLSurf& surface,
-                         const ocl::MillingCutter& cutter,
-                         bool verbose)
+void init_benchmark_logger(const std::string& log_file_path)
 {
+    try {
+        // 创建文件sink和控制台sink
+        auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(log_file_path, true);
+        auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+
+        // 创建sinks数组
+        std::vector<spdlog::sink_ptr> sinks {file_sink, console_sink};
+
+        // 创建logger，同时输出到文件和控制台
+        benchmark_logger =
+            std::make_shared<spdlog::logger>("benchmark", sinks.begin(), sinks.end());
+
+        // 设置日志格式
+        benchmark_logger->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%n] [%l] %v");
+
+        // 设置日志级别
+        benchmark_logger->set_level(spdlog::level::info);
+
+        // 刷新策略
+        benchmark_logger->flush_on(spdlog::level::info);
+
+        benchmark_logger->info("Benchmark logger initialized");
+    }
+    catch (const spdlog::spdlog_ex& ex) {
+        spdlog::error("Benchmark logger initialization failed: {}", ex.what());
+    }
+}
+
+void run_batchdropcutter(const CAMModelManager& model, bool verbose)
+{
+    // 如果logger未初始化，则初始化它
+    if (!benchmark_logger) {
+        init_benchmark_logger();
+    }
+
+    benchmark_logger->info("=====Begin Benchmark=====");
+    benchmark_logger->info("Use Cutter {} and Surface {} (#F: {})",
+                           model.cutter->str(),
+                           model.stlFilePath,
+                           model.surface->tris.size());
+
     // warmup_tbb first
     warmup_tbb();
 
@@ -49,23 +94,23 @@ void run_batchdropcutter(const ocl::STLSurf& surface,
     std::vector<ocl::CLPoint> points;
     for (int i = 0; i <= 6; i++) {
         // Prepare points
-        generate_points(surface, max_points, points);
+        generate_points(*model.surface, max_points, points);
         max_points *= 10;
 
         // Same Points, Same Cutter, Same Surface
         for (int j = 0; j < 2; j++) {
             if (verbose) {
                 if (j == 0) {
-                    spdlog::info("Running OpenMP Version with {} points", max_points);
+                    benchmark_logger->info("Running OpenMP Version with {} points", max_points);
                 }
                 else {
-                    spdlog::info("Running TBB Version with {} points", max_points);
+                    benchmark_logger->info("Running TBB Version with {} points", max_points);
                 }
             }
             // Prepare batchdropcutter
             ocl::BatchDropCutter bdc;
-            bdc.setSTL(surface);
-            bdc.setCutter(&cutter);
+            bdc.setSTL(*model.surface);
+            bdc.setCutter(model.cutter.get());
 
             for (auto& p : points) {
                 bdc.appendPoint(p);
@@ -81,40 +126,52 @@ void run_batchdropcutter(const ocl::STLSurf& surface,
             spdlog::stopwatch sw;
             bdc.run();
             if (j == 0) {
-                spdlog::info(
-                    "##OpenMP Vertion: Batchdropcutter with {} points took {} ms: {} calls",
+                benchmark_logger->info(
+                    "##OpenMP Version: Batchdropcutter with {} points took {} ms: {} calls",
                     max_points,
                     sw,
                     bdc.getCalls());
             }
             else {
-                spdlog::info("##TBB Vertion: Batchdropcutter with {} points took {} ms: {} calls",
-                             max_points,
-                             sw,
-                             bdc.getCalls());
+                benchmark_logger->info(
+                    "##TBB Version: Batchdropcutter with {} points took {} ms: {} calls",
+                    max_points,
+                    sw,
+                    bdc.getCalls());
             }
         }
     }
+
+    benchmark_logger->info("=====End Benchmark=====");
 }
 
-void run_SurfaceSubdivisionBatchDropCutter(const ocl::STLSurf& surface,
-                                           const ocl::MillingCutter& cutter,
-                                           bool verbose)
+void run_SurfaceSubdivisionBatchDropCutter(const CAMModelManager& model, bool verbose)
 {
+    // 如果logger未初始化，则初始化它
+    if (!benchmark_logger) {
+        init_benchmark_logger();
+    }
+
+    benchmark_logger->info("=====Begin Benchmark=====");
+    benchmark_logger->info("Use Cutter {} and Surface {} (#F: {})",
+                           model.cutter->str(),
+                           model.stlFilePath,
+                           model.surface->tris.size());
+
     // warmup_tbb first
     warmup_tbb();
 
     // prepare 1e5 points
     int max_points = 100000;
     std::vector<ocl::CLPoint> points;
-    generate_points(surface, max_points, points);
+    generate_points(*model.surface, max_points, points);
 
     // copy the surf
-    ocl::STLSurf surface_copy = surface;
+    ocl::STLSurf surface_copy = *model.surface;
 
     while (surface_copy.tris.size() < 1e7) {
         if (verbose) {
-            spdlog::info(
+            benchmark_logger->info(
                 "Running Surface Subdivision Batchdropcutter with {} triangles and {} drop points",
                 surface_copy.tris.size(),
                 max_points);
@@ -122,7 +179,7 @@ void run_SurfaceSubdivisionBatchDropCutter(const ocl::STLSurf& surface,
         // Prepare batchdropcutter
         ocl::BatchDropCutter bdc;
         bdc.setSTL(surface_copy);
-        bdc.setCutter(&cutter);
+        bdc.setCutter(model.cutter.get());
 
         for (auto& p : points) {
             bdc.appendPoint(p);
@@ -132,12 +189,13 @@ void run_SurfaceSubdivisionBatchDropCutter(const ocl::STLSurf& surface,
         spdlog::stopwatch sw;
         bdc.run();
 
-        spdlog::info("Run batchdropcutter with {} triangles took {} ms: {} calls",
-                     surface_copy.tris.size(),
-                     sw,
-                     bdc.getCalls());
+        benchmark_logger->info("Run batchdropcutter with {} triangles took {} ms: {} calls",
+                               surface_copy.tris.size(),
+                               sw,
+                               bdc.getCalls());
 
         // update the surface
         SubdivideSurface(surface_copy);
     }
+    benchmark_logger->info("=====End Benchmark=====");
 }
