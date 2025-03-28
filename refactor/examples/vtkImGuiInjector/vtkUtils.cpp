@@ -5,217 +5,9 @@
 #include <cmath>
 #include <vtkAppendPolyData.h>
 
+// 空的命名空间，已经移除所有cutter相关的实现
 namespace
 {
-// 绘制圆柱铣刀(Cylindrical Cutter)
-// 圆柱铣刀的CL位置在圆柱Cap的中心
-void UpdateCylCutter(vtkSmartPointer<vtkActor>& actor,
-                     const ocl::CylCutter& cutter,
-                     const ocl::Point& p)
-{
-    assert(actor);
-    const double r = cutter.getRadius();
-    const double flutesLength = cutter.getLength();
-
-    // 创建圆柱体
-    vtkNew<vtkCylinderSource> cylinderSource;
-    cylinderSource->SetCenter(p.x, p.y - flutesLength / 2.0, p.z);
-    cylinderSource->SetHeight(flutesLength);
-    cylinderSource->SetRadius(r);
-    cylinderSource->SetResolution(30);
-    cylinderSource->CappingOn();
-
-    // Use Transform to rotate the cylinder
-    vtkNew<vtkTransform> transform;
-    transform->RotateX(-90);
-
-    vtkNew<vtkTransformPolyDataFilter> transformFilter;
-    transformFilter->SetInputConnection(cylinderSource->GetOutputPort());
-    transformFilter->SetTransform(transform);
-
-    vtkNew<vtkPolyDataMapper> mapper;
-    mapper->SetInputConnection(transformFilter->GetOutputPort());
-    actor->SetMapper(mapper);
-    actor->GetProperty()->SetColor(red[0], red[1], red[2]);
-    actor->SetObjectName(cutter.str());
-    SetActorWireframe(actor);
-}
-
-// 绘制球头铣刀(Ball Cutter)
-// 球头铣刀的CL位置在半球顶部
-void UpdateBallCutter(vtkSmartPointer<vtkActor>& actor,
-                      const ocl::BallCutter& cutter,
-                      const ocl::Point& p)
-{
-    assert(actor);
-    double r = cutter.getRadius();
-    double flutesLength = cutter.getLength();
-    double shaftLength = flutesLength - r;
-
-    // 创建圆柱部分（刀杆）
-    vtkNew<vtkCylinderSource> cylinderSource;
-    cylinderSource->SetCenter(p.x, p.y - shaftLength / 2.0 - r, p.z);
-    cylinderSource->SetHeight(shaftLength);
-    cylinderSource->SetRadius(r);
-    cylinderSource->SetResolution(30);
-    cylinderSource->CappingOn();
-
-    // 创建球体部分
-    vtkNew<vtkSphereSource> sphereSource;
-    sphereSource->SetCenter(p.x, p.y - r, p.z);
-    sphereSource->SetRadius(r);
-    sphereSource->SetPhiResolution(30);
-    sphereSource->SetThetaResolution(30);
-    // 半球
-    sphereSource->SetStartTheta(0);
-    sphereSource->SetEndTheta(180);
-
-    // 合并圆柱和球体
-    vtkNew<vtkAppendPolyData> appendFilter;
-    appendFilter->AddInputConnection(cylinderSource->GetOutputPort());
-    appendFilter->AddInputConnection(sphereSource->GetOutputPort());
-    appendFilter->Update();
-
-    // Use Transform to rotate the cylinder
-    vtkNew<vtkTransform> transform;
-    transform->RotateX(-90);
-
-    vtkNew<vtkTransformPolyDataFilter> transformFilter;
-    transformFilter->SetInputConnection(appendFilter->GetOutputPort());
-    transformFilter->SetTransform(transform);
-
-    // 创建映射器
-    vtkNew<vtkPolyDataMapper> mapper;
-    mapper->SetInputConnection(transformFilter->GetOutputPort());
-
-    actor->SetMapper(mapper);
-    actor->GetProperty()->SetColor(yellow[0], yellow[1], yellow[2]);
-    actor->SetObjectName(cutter.str());
-    SetActorWireframe(actor);
-}
-
-// 绘制牛头铣刀(Bull Cutter)
-// FIXME: 刀头部分不知如何绘制
-void UpdateBullCutter(vtkSmartPointer<vtkActor>& actor,
-                      const ocl::BullCutter& cutter,
-                      const ocl::Point& p)
-{
-    assert(actor);
-    double r1 = cutter.getRadius() - cutter.getRadius2();  // 圆柱部分半径
-    double r2 = cutter.getRadius2();                       // 圆角半径
-    double flutesLength = cutter.getLength();
-
-    // 创建圆柱部分
-    vtkNew<vtkCylinderSource> cylinderSource;
-    cylinderSource->SetHeight(flutesLength - r2);
-    cylinderSource->SetRadius(r1);
-    cylinderSource->SetResolution(30);
-    cylinderSource->CappingOn();
-
-    // 移动圆柱到正确位置
-    vtkNew<vtkTransform> cylinderTransform;
-    cylinderTransform->Translate(p.x, p.y, p.z + r2 + (flutesLength - r2) / 2.0);
-    cylinderTransform->RotateX(90);  // 纵轴旋转为Z轴
-
-    vtkNew<vtkTransformPolyDataFilter> cylinderTransformFilter;
-    cylinderTransformFilter->SetInputConnection(cylinderSource->GetOutputPort());
-    cylinderTransformFilter->SetTransform(cylinderTransform);
-
-    // 创建底部圆环（使用参数曲面来表示环面）
-    vtkNew<vtkParametricSuperToroid> toroidSource;
-    toroidSource->SetN1(1.0);
-    toroidSource->SetN2(1.0);
-    toroidSource->SetRingRadius(r1);
-    toroidSource->SetCrossSectionRadius(r2);
-    toroidSource->SetXRadius(r1);
-    toroidSource->SetYRadius(r1);
-    toroidSource->SetZRadius(r2);
-
-    vtkNew<vtkParametricFunctionSource> toroidFunctionSource;
-    toroidFunctionSource->SetParametricFunction(toroidSource);
-    toroidFunctionSource->SetUResolution(30);
-    toroidFunctionSource->SetVResolution(30);
-    toroidFunctionSource->SetWResolution(30);
-    toroidFunctionSource->Update();
-
-    // 移动圆环到正确位置
-    vtkNew<vtkTransform> toroidTransform;
-    toroidTransform->Translate(p.x, p.y, p.z + r2);
-
-    vtkNew<vtkTransformPolyDataFilter> toroidTransformFilter;
-    toroidTransformFilter->SetInputConnection(toroidFunctionSource->GetOutputPort());
-    toroidTransformFilter->SetTransform(toroidTransform);
-
-    // 合并圆柱和圆环
-    vtkNew<vtkAppendPolyData> appendFilter;
-    appendFilter->AddInputConnection(cylinderTransformFilter->GetOutputPort());
-    appendFilter->AddInputConnection(toroidTransformFilter->GetOutputPort());
-    appendFilter->Update();
-
-    // 创建映射器
-    vtkNew<vtkPolyDataMapper> mapper;
-    mapper->SetInputData(appendFilter->GetOutput());
-
-    actor->SetMapper(mapper);
-    actor->GetProperty()->SetColor(green[0], green[1], green[2]);
-    actor->SetObjectName(cutter.str());
-    SetActorWireframe(actor);
-}
-
-// 绘制锥形铣刀(Cone Cutter)
-// 对于锥形铣刀，圆锥顶点即为CL位置 （TODO: 需要验证）
-void UpdateConeCutter(vtkSmartPointer<vtkActor>& actor,
-                      const ocl::ConeCutter& cutter,
-                      const ocl::Point& p)
-{
-    assert(actor);
-    double r = cutter.getRadius();
-    double angle = cutter.getAngle();
-    double coneHeight = r / std::tan(angle);
-    double fullLength = cutter.getLength();
-    double shaftLength = fullLength - coneHeight;
-
-    // 创建圆柱部分（刀杆）
-    vtkNew<vtkCylinderSource> cylinderSource;
-    cylinderSource->SetCenter(p.x, p.y - shaftLength / 2.0 - coneHeight, p.z);
-    cylinderSource->SetHeight(shaftLength);
-    cylinderSource->SetRadius(r);
-    cylinderSource->SetResolution(30);
-    cylinderSource->CappingOn();
-
-    // 创建锥体部分
-    vtkNew<vtkConeSource> coneSource;
-    coneSource->SetCenter(p.x, p.y - coneHeight / 2.0, p.z);
-    coneSource->SetHeight(coneHeight);
-    coneSource->SetRadius(r);
-    coneSource->SetResolution(30);
-    // 先让圆锥轴线跟上面的圆柱轴线重合（Y轴），之后统一绕X轴旋转-90度
-    coneSource->SetDirection(0, 1, 0);
-    coneSource->CappingOn();
-
-    // 合并圆柱和锥体
-    vtkNew<vtkAppendPolyData> appendFilter;
-    appendFilter->AddInputConnection(cylinderSource->GetOutputPort());
-    appendFilter->AddInputConnection(coneSource->GetOutputPort());
-    appendFilter->Update();
-
-    // Use Transform to rotate the cylinder
-    vtkNew<vtkTransform> transform;
-    transform->RotateX(-90);
-
-    vtkNew<vtkTransformPolyDataFilter> transformFilter;
-    transformFilter->SetInputConnection(appendFilter->GetOutputPort());
-    transformFilter->SetTransform(transform);
-
-    // 创建映射器
-    vtkNew<vtkPolyDataMapper> mapper;
-    mapper->SetInputConnection(transformFilter->GetOutputPort());
-
-    actor->SetMapper(mapper);
-    actor->GetProperty()->SetColor(blue[0], blue[1], blue[2]);
-    actor->SetObjectName(cutter.str());
-    SetActorWireframe(actor);
-}
 }  // namespace
 
 void UpdateStlSurfActor(vtkSmartPointer<vtkActor>& actor,
@@ -283,7 +75,7 @@ void UpdateCLPointCloudActor(vtkSmartPointer<vtkActor>& pointsActor,
                              const std::vector<ocl::CLPoint>& clpoints,
                              bool forCLPoints)
 {
-    assert(actor);
+    assert(pointsActor);
     // 创建点集
     vtkNew<vtkPoints> points;
 
@@ -349,7 +141,7 @@ void UpdateCLPointCloudActor(vtkSmartPointer<vtkActor>& pointsActor,
         for (size_t i = 0; i <= ocl::CCType::CCTYPE_ERROR; i++) {
             // 使用三分量数组先获取RGB颜色
             double rgb[3] = {0, 0, 0};
-            
+
             // Get the color for this CCType
             if (forCLPoints) {
                 GetCcColor(static_cast<ocl::CCType>(i), rgb);
@@ -357,7 +149,7 @@ void UpdateCLPointCloudActor(vtkSmartPointer<vtkActor>& pointsActor,
             else {
                 GetClColor(static_cast<ocl::CCType>(i), rgb);
             }
-            
+
             // 设置图例项
             std::string typeName = ocl::CCType2String(static_cast<ocl::CCType>(i));
             legendActor->SetEntry(static_cast<int>(i),
@@ -521,34 +313,4 @@ void UpdateLoopsActor(vtkSmartPointer<vtkActor>& actor,
                  all_loops.size(),
                  pointCount,
                  lines->GetNumberOfCells());
-}
-
-// 通用绘制铣刀函数，根据铣刀类型动态选择绘制方法
-void UpdateCutterActor(vtkSmartPointer<vtkActor>& actor,
-                       const ocl::MillingCutter& cutter,
-                       const ocl::Point& p)
-{
-    // 使用dynamic_cast和typeid判断铣刀类型
-    if (const auto* cylCutter = dynamic_cast<const ocl::CylCutter*>(&cutter)) {
-        // 绘制圆柱铣刀
-        UpdateCylCutter(actor, *cylCutter, p);
-    }
-    else if (const auto* ballCutter = dynamic_cast<const ocl::BallCutter*>(&cutter)) {
-        // 绘制球头铣刀
-        UpdateBallCutter(actor, *ballCutter, p);
-    }
-    else if (const auto* bullCutter = dynamic_cast<const ocl::BullCutter*>(&cutter)) {
-        // 绘制牛头铣刀
-        UpdateBullCutter(actor, *bullCutter, p);
-    }
-    else if (const auto* coneCutter = dynamic_cast<const ocl::ConeCutter*>(&cutter)) {
-        // 绘制锥形铣刀
-        UpdateConeCutter(actor, *coneCutter, p);
-    }
-    else {
-        // 未知铣刀类型，使用默认绘制方法
-        spdlog::warn("Unknown cutter type: {}, will create a default cylinder cutter",
-                     cutter.str());
-        UpdateCylCutter(actor, ocl::CylCutter(), p);
-    }
 }

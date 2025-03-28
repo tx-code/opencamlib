@@ -2,7 +2,9 @@
 // SPDX-License-Identifier: BSD-3-Clause
 
 #include "OverlayUI.h"
+#include "vtkCutters.h"
 #include "vtkDearImGuiInjector.h"
+
 
 #include <algorithm>
 #include <boost/math/constants/constants.hpp>
@@ -76,7 +78,7 @@ struct OCLSettings
     double lift_step = DefaultSettings::lift_step;
     double lift_from = DefaultSettings::lift_from;
     double lift_to = DefaultSettings::lift_to;
-    
+
     // 随机批量降刀特有设置
     int random_points = 10000;
 };
@@ -559,9 +561,9 @@ void DrawOperationUI(vtkDearImGuiInjector* injector)
                         break;
                     case 4:
                         randomBatchDropCutter(modelManager,
-                                               actorManager,
-                                               g_settings.sampling,
-                                               g_settings.random_points);
+                                              actorManager,
+                                              g_settings.sampling,
+                                              g_settings.random_points);
                         break;
                 }
                 injector->ForceResetCamera();

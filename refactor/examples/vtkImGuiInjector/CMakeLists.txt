@@ -52,6 +52,7 @@ add_executable(vtkImGuiInjector
     OverlayUI.cpp
     vtkDearImGuiInjector.cpp
     vtkUtils.cpp
+    vtkCutters.cpp
     oclUtils.cpp
     STLSurfUtils.cpp
 )
