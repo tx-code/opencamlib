@@ -3,9 +3,12 @@
 #include <CGAL/Polygon_mesh_processing/random_perturbation.h>
 #include <CGAL/Surface_mesh.h>
 #include <igl/remove_duplicate_vertices.h>
+#include <igl/upsample.h>
 #include <igl/voxel_grid.h>
 #include <spdlog/spdlog.h>
 
+#include "geo/point.hpp"
+#include "geo/triangle.hpp"
 
 using K = CGAL::Exact_predicates_inexact_constructions_kernel;
 using SurfaceMesh = CGAL::Surface_mesh<K::Point_3>;
@@ -73,7 +76,9 @@ void RandomPerturbation(ocl::STLSurf& surf, double max_move_distance, bool do_pr
     SurfaceMesh mesh;
     ToSurfaceMesh(V, F, mesh);
 
-    CGAL::Polygon_mesh_processing::random_perturbation(mesh, max_move_distance, CGAL::parameters::do_project(do_project));
+    CGAL::Polygon_mesh_processing::random_perturbation(mesh,
+                                                       max_move_distance,
+                                                       CGAL::parameters::do_project(do_project));
 
     // Convert back to STLSurf
     // FIXME: we do not need to clear the triangles, but we need to update the vertices
@@ -110,4 +115,32 @@ void CreateVoxelGrid(const ocl::STLSurf& surf,
     igl::voxel_grid(V, 0, size, pad_count, GV, res);
 
     spdlog::info("#GV: {}, #res: ({}, {}, {})", GV.rows(), res(0), res(1), res(2));
+}
+
+void SubdivideSurface(ocl::STLSurf& surf, int level)
+{
+    Eigen::MatrixXd V;
+    Eigen::MatrixXi F;
+    ExtractVF(surf, V, F);
+
+    Eigen::MatrixXd NV;
+    Eigen::MatrixXi NF;
+    igl::upsample(V, F, NV, NF, level);
+
+    spdlog::info("Upsampled from #V: {}, #F: {} to #NV: {}, #NF: {}",
+                 V.rows(),
+                 F.rows(),
+                 NV.rows(),
+                 NF.rows());
+
+    // to STLSurf
+    surf.tris.clear();
+    for (int i = 0; i < NF.rows(); i++) {
+        auto VF_0 = NV.row(NF(i, 0));
+        auto VF_1 = NV.row(NF(i, 1));
+        auto VF_2 = NV.row(NF(i, 2));
+        surf.addTriangle(ocl::Triangle(ocl::Point(VF_0[0], VF_0[1], VF_0[2]),
+                                       ocl::Point(VF_1[0], VF_1[1], VF_1[2]),
+                                       ocl::Point(VF_2[0], VF_2[1], VF_2[2])));
+    }
 }

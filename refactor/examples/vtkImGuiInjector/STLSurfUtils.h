@@ -6,6 +6,9 @@
 
 void ExtractVF(const ocl::STLSurf& surf, Eigen::MatrixXd& V, Eigen::MatrixXi& F);
 
+// Upsample the surface mesh...
+void SubdivideSurface(ocl::STLSurf& surf, int level = 1);
+
 void RandomPerturbation(ocl::STLSurf& surf,
                         double max_move_distance = 0.01,
                         bool do_project = true);

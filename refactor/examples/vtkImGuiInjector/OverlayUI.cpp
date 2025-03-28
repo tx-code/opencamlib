@@ -658,6 +658,11 @@ void DrawDataModelUI(vtkDearImGuiInjector* injector)
                 RandomPerturbation(*modelManager.surface, max_move_distance, true);
                 UpdateStlSurfActor(actorManager.modelActor, *modelManager.surface);
             }
+
+            if (ImGui::Button("Subdivision once")) {
+                SubdivideSurface(*modelManager.surface);
+                UpdateStlSurfActor(actorManager.modelActor, *modelManager.surface);
+            }
         }
         else {
             ImGui::TextDisabled("No WorkPiece");
@@ -848,6 +853,21 @@ void DrawCAMExample(vtkDearImGuiInjector* injector)
                                  modelManager.cutter->str(),
                                  modelManager.stlFilePath);
                     run_batchdropcutter(*modelManager.surface, *modelManager.cutter, verbose);
+                    spdlog::info("=====End Benchmark=====");
+                }
+                else {
+                    spdlog::error("No cutter or surface");
+                }
+            }
+            if (ImGui::Button("Run SurfaceSubdivisionBatchDropCutter")) {
+                if (modelManager.cutter && modelManager.surface) {
+                    spdlog::info("=====Begin Benchmark=====");
+                    spdlog::info("Use Cutter {} and Surface {}",
+                                 modelManager.cutter->str(),
+                                 modelManager.stlFilePath);
+                    run_SurfaceSubdivisionBatchDropCutter(*modelManager.surface,
+                                                         *modelManager.cutter,
+                                                         verbose);
                     spdlog::info("=====End Benchmark=====");
                 }
                 else {

@@ -4,6 +4,8 @@
 #include <spdlog/stopwatch.h>
 #include <tbb/parallel_for.h>
 
+#include "STLSurfUtils.h"
+
 namespace
 {
 void generate_points(const ocl::STLSurf& surface, int max_points, std::vector<ocl::CLPoint>& points)
@@ -29,7 +31,7 @@ void generate_points(const ocl::STLSurf& surface, int max_points, std::vector<oc
 
 void warmup_tbb()
 {
-    // 方法1：执行一个简单的parallel_for
+    // 执行一个简单的parallel_for
     tbb::parallel_for(0, 1000, [](int) {
         // 空操作
     });
@@ -92,5 +94,50 @@ void run_batchdropcutter(const ocl::STLSurf& surface,
                              bdc.getCalls());
             }
         }
+    }
+}
+
+void run_SurfaceSubdivisionBatchDropCutter(const ocl::STLSurf& surface,
+                                           const ocl::MillingCutter& cutter,
+                                           bool verbose)
+{
+    // warmup_tbb first
+    warmup_tbb();
+
+    // prepare 1e5 points
+    int max_points = 100000;
+    std::vector<ocl::CLPoint> points;
+    generate_points(surface, max_points, points);
+
+    // copy the surf
+    ocl::STLSurf surface_copy = surface;
+
+    while (surface_copy.tris.size() < 1e7) {
+        if (verbose) {
+            spdlog::info(
+                "Running Surface Subdivision Batchdropcutter with {} triangles and {} drop points",
+                surface_copy.tris.size(),
+                max_points);
+        }
+        // Prepare batchdropcutter
+        ocl::BatchDropCutter bdc;
+        bdc.setSTL(surface_copy);
+        bdc.setCutter(&cutter);
+
+        for (auto& p : points) {
+            bdc.appendPoint(p);
+        }
+
+        // Run batchdropcutter
+        spdlog::stopwatch sw;
+        bdc.run();
+
+        spdlog::info("Run batchdropcutter with {} triangles took {} ms: {} calls",
+                     surface_copy.tris.size(),
+                     sw,
+                     bdc.getCalls());
+
+        // update the surface
+        SubdivideSurface(surface_copy);
     }
 }

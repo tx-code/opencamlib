@@ -8,3 +8,8 @@
 void run_batchdropcutter(const ocl::STLSurf& surface,
                          const ocl::MillingCutter& cutter,
                          bool verbose = true);
+
+// Use Subdivision algorithm to subdivide the surface, Up to 1e7 facets
+void run_SurfaceSubdivisionBatchDropCutter(const ocl::STLSurf& surface,
+                                           const ocl::MillingCutter& cutter,
+                                           bool verbose = true);
