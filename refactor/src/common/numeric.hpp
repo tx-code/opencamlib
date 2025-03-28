@@ -35,7 +35,7 @@
 
 namespace ocl {
 
-#define PI 3.1415926535897932
+constexpr double PI = 3.1415926535897932;
 
 ///
 /// \brief Numeric is a collection of functions for dealing
@@ -55,7 +55,7 @@ bool isNegative(double x);
 bool isPositive(double x);
 
 /// return true if x is zero, to within tolerance
-bool isZero_tol(double x);
+OCL_API bool isZero_tol(double x);
 
 /// returns machine-epsilon
 /// eps is such that 1 < 1 + eps
