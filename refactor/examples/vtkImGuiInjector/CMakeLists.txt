@@ -55,6 +55,7 @@ add_executable(vtkImGuiInjector
     vtkCutters.cpp
     oclUtils.cpp
     STLSurfUtils.cpp
+    oclBenchmark.cpp
 )
 
 if(VTK_VERSION VERSION_LESS "9.0.0")

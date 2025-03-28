@@ -23,6 +23,7 @@
 
 #include "CutterTimerCallback.h"
 #include "STLSurfUtils.h"
+#include "oclBenchmark.h"
 #include "oclUtils.h"
 
 
@@ -837,6 +838,25 @@ void DrawCAMExample(vtkDearImGuiInjector* injector)
         DrawLoadStlUI(injector);
         DrawCutterUI(injector);
         DrawOperationUI(injector);
+        if (ImGui::BeginMenu("OCL Benchmark")) {
+            static bool verbose = true;
+            ImGui::Checkbox("Verbose", &verbose);
+            if (ImGui::Button("Run BatchDropCutter")) {
+                if (modelManager.cutter && modelManager.surface) {
+                    spdlog::info("=====Begin Benchmark=====");
+                    spdlog::info("Use Cutter {} and Surface {}",
+                                 modelManager.cutter->str(),
+                                 modelManager.stlFilePath);
+                    run_batchdropcutter(*modelManager.surface, *modelManager.cutter, verbose);
+                    spdlog::info("=====End Benchmark=====");
+                }
+                else {
+                    spdlog::error("No cutter or surface");
+                }
+            }
+
+            ImGui::EndMenu();
+        }
         ImGui::EndMenu();
     }
 

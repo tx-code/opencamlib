@@ -33,6 +33,7 @@ target_link_libraries(ocl
     Boost::math
     Boost::graph
     OpenMP::OpenMP_CXX
+    TBB::tbb
 )
 
 add_subdirectory(common)

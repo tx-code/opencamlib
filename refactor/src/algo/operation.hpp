@@ -30,7 +30,8 @@
 #include "fiber.hpp"
 #include "geo/point.hpp"
 
-namespace ocl {
+namespace ocl
+{
 
 class STLSurf;
 class Triangle;
@@ -39,93 +40,146 @@ class MillingCutter;
 /// \brief base-class for low-level cam algorithms
 ///
 /// base-class for cam algorithms
-class OCL_API Operation {
+class OCL_API Operation
+{
 public:
-  Operation() {}
-  virtual ~Operation() {
-    // std::cout << "~Operation()\n";
-  }
-  /// set the STL-surface and build kd-tree
-  virtual void setSTL(const STLSurf &s) {
-    surf = &s;
-    BOOST_FOREACH (Operation *op, subOp) { op->setSTL(s); }
-  }
-  /// set the MillingCutter to use
-  virtual void setCutter(const MillingCutter *c) {
-    cutter = c;
-    BOOST_FOREACH (Operation *op, subOp) { op->setCutter(cutter); }
-  }
-  /// set number of OpenMP threads. Defaults to OpenMP::omp_get_num_procs()
-  void setThreads(unsigned int n) {
-    nthreads = n;
-    BOOST_FOREACH (Operation *op, subOp) { op->setThreads(nthreads); }
-  }
-  /// return number of OpenMP threads
-  int getThreads() const { return nthreads; }
-  /// return the kd-tree bucket-size
-  int getBucketSize() const { return bucketSize; }
-  /// set the kd-tree bucket-size
-  void setBucketSize(unsigned int s) {
-    bucketSize = s;
-    BOOST_FOREACH (Operation *op, subOp) { op->setBucketSize(bucketSize); }
-  }
-  /// return number of low-level calls
-  int getCalls() const { return nCalls; }
+    Operation()
+    {}
+    virtual ~Operation()
+    {
+        // std::cout << "~Operation()\n";
+    }
+    /// set the STL-surface and build kd-tree
+    virtual void setSTL(const STLSurf& s)
+    {
+        surf = &s;
+        BOOST_FOREACH (Operation* op, subOp) {
+            op->setSTL(s);
+        }
+    }
+    /// set the MillingCutter to use
+    virtual void setCutter(const MillingCutter* c)
+    {
+        cutter = c;
+        BOOST_FOREACH (Operation* op, subOp) {
+            op->setCutter(cutter);
+        }
+    }
+    /// set number of OpenMP threads. Defaults to OpenMP::omp_get_num_procs()
+    void setThreads(unsigned int n)
+    {
+        nthreads = n;
+        BOOST_FOREACH (Operation* op, subOp) {
+            op->setThreads(nthreads);
+        }
+    }
+    /// return number of OpenMP threads
+    int getThreads() const
+    {
+        return nthreads;
+    }
+    /// return the kd-tree bucket-size
+    int getBucketSize() const
+    {
+        return bucketSize;
+    }
+    /// set the kd-tree bucket-size
+    void setBucketSize(unsigned int s)
+    {
+        bucketSize = s;
+        BOOST_FOREACH (Operation* op, subOp) {
+            op->setBucketSize(bucketSize);
+        }
+    }
+    /// return number of low-level calls
+    int getCalls() const
+    {
+        return nCalls;
+    }
 
-  /// set the sampling interval for this Operation and all sub-operations
-  virtual void setSampling(double s) {
-    sampling = s;
-    BOOST_FOREACH (Operation *op, subOp) { op->setSampling(sampling); }
-  }
-  /// return the sampling interval
-  virtual double getSampling() { return sampling; }
+    /// set the sampling interval for this Operation and all sub-operations
+    virtual void setSampling(double s)
+    {
+        sampling = s;
+        BOOST_FOREACH (Operation* op, subOp) {
+            op->setSampling(sampling);
+        }
+    }
+    /// return the sampling interval
+    virtual double getSampling()
+    {
+        return sampling;
+    }
 
-  /// run the algorithm
-  virtual void run() = 0;
-  /// run algorithm on a single input CLPoint
-  virtual void run(CLPoint &cl) { assert(0); }
-  /// run push-cutter type algorithm on input Fiber
-  virtual void run(Fiber &f) { assert(0); }
+    /// run the algorithm
+    virtual void run() = 0;
+    /// run algorithm on a single input CLPoint
+    virtual void run(CLPoint& cl)
+    {
+        assert(0);
+    }
+    /// run push-cutter type algorithm on input Fiber
+    virtual void run(Fiber& f)
+    {
+        assert(0);
+    }
 
-  virtual void reset() {}
+    virtual void reset()
+    {}
 
-  /// return CL-points
-  virtual std::vector<CLPoint> getCLPoints() {
-    std::vector<CLPoint> *clv = new std::vector<CLPoint>();
-    return *clv;
-  }
-  virtual void clearCLPoints() {}
+    /// return CL-points
+    virtual std::vector<CLPoint> getCLPoints()
+    {
+        std::vector<CLPoint>* clv = new std::vector<CLPoint>();
+        return *clv;
+    }
+    virtual void clearCLPoints()
+    {}
 
-  /// add an input CLPoint to this Operation
-  virtual void appendPoint(CLPoint &p) {}
-  /// used by batchpushcutter
-  virtual void setXDirection() {}
-  /// used by batchpushcutter
-  virtual void setYDirection() {}
-  /// add a fiber input to a push-cutter type operation
-  virtual void appendFiber(Fiber &f) {}
-  /// return the result of a push-cutter type operation
-  virtual std::vector<Fiber> *getFibers() const { return 0; }
+    /// add an input CLPoint to this Operation
+    virtual void appendPoint(CLPoint& p)
+    {}
+    /// used by batchpushcutter
+    virtual void setXDirection()
+    {}
+    /// used by batchpushcutter
+    virtual void setYDirection()
+    {}
+    /// add a fiber input to a push-cutter type operation
+    virtual void appendFiber(Fiber& f)
+    {}
+    /// return the result of a push-cutter type operation
+    virtual std::vector<Fiber>* getFibers() const
+    {
+        return 0;
+    }
+
+    void setForceUseTBB(bool force_use_tbb)
+    {
+        this->force_use_tbb = force_use_tbb;
+    }
 
 protected:
-  /// sampling interval
-  double sampling;
-  /// how many low-level calls were made
-  int nCalls;
-  /// size of bucket-node in KD-tree
-  unsigned int bucketSize;
-  /// the MillingCutter used
-  const MillingCutter *cutter;
-  /// the STLSurf which we test against.
-  const STLSurf *surf;
-  /// root of a kd-tree
-  KDTree<Triangle> *root;
-  /// number of threads to use
-  unsigned int nthreads;
-  /// sub-operations, if any, of this operation
-  std::vector<Operation *> subOp;
+    /// sampling interval
+    double sampling;
+    /// how many low-level calls were made
+    int nCalls;
+    /// size of bucket-node in KD-tree
+    unsigned int bucketSize;
+    /// the MillingCutter used
+    const MillingCutter* cutter;
+    /// the STLSurf which we test against.
+    const STLSurf* surf;
+    /// root of a kd-tree
+    KDTree<Triangle>* root;
+    /// number of threads to use
+    unsigned int nthreads;
+    /// sub-operations, if any, of this operation
+    std::vector<Operation*> subOp;
+
+    bool force_use_tbb {false};
 };
 
-} // namespace ocl
+}  // namespace ocl
 
-#endif // end operation.h
+#endif  // end operation.h

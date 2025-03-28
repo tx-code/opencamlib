@@ -31,7 +31,8 @@
 #include "cutters/millingcutter.hpp"
 #include "geo/clpoint.hpp"
 
-namespace ocl {
+namespace ocl
+{
 
 class STLSurf;
 class Triangle;
@@ -43,38 +44,47 @@ class Triangle;
 /// The list of CLPoint's will be updated with the correct z-height as well
 /// as corresponding CCPoint's
 /// Some versions of this algorithm use OpenMP for multi-threading.
-class OCL_API BatchDropCutter : public Operation {
+class OCL_API BatchDropCutter: public Operation
+{
 public:
-  BatchDropCutter();
-  virtual ~BatchDropCutter();
-  /// set the STL-surface and build kd-tree to enable optimized algorithm
-  void setSTL(const STLSurf &s);
-  /// append to list of CL-points to evaluate
-  void appendPoint(CLPoint &p);
-  /// run drop-cutter on all clpoints
-  void run() { this->dropCutter5(); };
-  // getters and setters
-  /// return a vector of CLPoints, the result of this operation
-  std::vector<CLPoint> getCLPoints() { return *clpoints; }
-  /// clears the vector of CLPoints
-  void clearCLPoints() { clpoints->clear(); }
+    BatchDropCutter();
+    virtual ~BatchDropCutter();
+    /// set the STL-surface and build kd-tree to enable optimized algorithm
+    void setSTL(const STLSurf& s);
+    /// append to list of CL-points to evaluate
+    void appendPoint(CLPoint& p);
+    /// run drop-cutter on all clpoints
+    void run() override;
+    // getters and setters
+    /// return a vector of CLPoints, the result of this operation
+    std::vector<CLPoint> getCLPoints()
+    {
+        return *clpoints;
+    }
+    /// clears the vector of CLPoints
+    void clearCLPoints()
+    {
+        clpoints->clear();
+    }
 
 protected:
-  /// unoptimized drop-cutter,  tests against all triangles of surface
-  void dropCutter1();
-  /// better, kd-tree optimized version
-  void dropCutter2();
-  /// kd-tree and explicit overlap test
-  void dropCutter3();
-  /// use OpenMP for multi-threading
-  void dropCutter4();
-  /// version 5 of the algorithm
-  void dropCutter5();
-  // DATA
-  /// pointer to list of CL-points on which to run drop-cutter.
-  std::vector<CLPoint> *clpoints;
+    /// unoptimized drop-cutter,  tests against all triangles of surface
+    void dropCutter1();
+    /// better, kd-tree optimized version
+    void dropCutter2();
+    /// kd-tree and explicit overlap test
+    void dropCutter3();
+    /// use OpenMP for multi-threading
+    void dropCutter4();
+    /// version 5 of the algorithm
+    void dropCutter5();
+    /// version 6 of the algorithm (force with tbb)
+    void dropCutter6();
+    // DATA
+    /// pointer to list of CL-points on which to run drop-cutter.
+    std::vector<CLPoint>* clpoints;
 };
 
-} // namespace ocl
+}  // namespace ocl
 
 #endif
