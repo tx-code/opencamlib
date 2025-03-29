@@ -24,7 +24,8 @@
 
 #include <iostream>
 #include <list>
-
+#include <spdlog/stopwatch.h>
+#include <spdlog/spdlog.h>
 #include <boost/foreach.hpp>
 
 #include "cutters/millingcutter.hpp"
@@ -113,9 +114,16 @@ public:
   /// build the kd-tree based on a list of input objects
   void build(const std::list<BBObj> &list) {
     // std::cout << "KDTree::build() list.size()= " << list.size() << " \n";
+    
     delete root;
+    spdlog::stopwatch sw;
     root = build_node(&list, 0, NULL);
+    spdlog::info("KDTree::build() size:={} time:={} ms", list.size(), sw);
   }
+
+  /// Get the root node of the kd-tree
+  KDNode<BBObj> *getRoot() const { return root; }
+
   /// search for overlap with input Bbox bb, return found objects
   std::list<BBObj> *search(const Bbox &bb) {
     assert(!dimensions.empty());
@@ -313,11 +321,11 @@ protected:
   }         // end search_kdtree();
             // DATA
   /// bucket size of tree
-  unsigned int bucketSize;
+  unsigned int bucketSize {1};
   /// pointer to root KDNode
   KDNode<BBObj> *root;
   /// the dimensions in this kd-tree
-  std::vector<int> dimensions;
+  std::vector<int> dimensions {0, 1, 2, 3};
 };
 
 } // namespace ocl

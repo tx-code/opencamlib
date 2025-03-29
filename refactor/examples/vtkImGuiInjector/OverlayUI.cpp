@@ -663,6 +663,21 @@ void DrawDataModelUI(vtkDearImGuiInjector* injector)
                 SubdivideSurface(*modelManager.surface);
                 UpdateStlSurfActor(actorManager.modelActor, *modelManager.surface);
             }
+            bool updateKDTree = false;
+            static bool onlyLeafNodes = false;
+            static bool showKDTree = false;
+            updateKDTree |= ImGui::Checkbox("Show KDTree", &showKDTree);
+            actorManager.kdtreeActor->SetVisibility(showKDTree);
+            ImGui::SameLine();
+            updateKDTree |= ImGui::Checkbox("Only leaf nodes", &onlyLeafNodes);
+            if(showKDTree && updateKDTree) {
+                ocl::KDTree<ocl::Triangle> kdtree;
+                kdtree.setBucketSize(1);
+                kdtree.setXYDimensions();
+                kdtree.build(modelManager.surface->tris);
+                
+                UpdateKDTreeActor(actorManager.kdtreeActor, &kdtree, 0.4, onlyLeafNodes);
+            }
         }
         else {
             ImGui::TextDisabled("No WorkPiece");
