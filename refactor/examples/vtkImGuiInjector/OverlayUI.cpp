@@ -877,6 +877,14 @@ void DrawCAMExample(vtkDearImGuiInjector* injector)
                     spdlog::error("No cutter or surface");
                 }
             }
+            if (ImGui::Button("Run BatchDropCutter (Bucket Size)")) {
+                if (modelManager.cutter && modelManager.surface) {
+                    run_BatchDropCutter_WithDifferentBucketSize(modelManager, verbose);
+                }
+                else {
+                    spdlog::error("No cutter or surface");
+                }
+            }
 
             ImGui::EndMenu();
         }

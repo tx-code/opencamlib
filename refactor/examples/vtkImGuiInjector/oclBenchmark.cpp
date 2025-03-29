@@ -199,3 +199,51 @@ void run_SurfaceSubdivisionBatchDropCutter(const CAMModelManager& model, bool ve
     }
     benchmark_logger->info("=====End Benchmark=====");
 }
+
+void run_BatchDropCutter_WithDifferentBucketSize(const CAMModelManager& model, bool verbose)
+{
+    // 如果logger未初始化，则初始化它
+    if (!benchmark_logger) {
+        init_benchmark_logger();
+    }
+
+    benchmark_logger->info("=====Begin Benchmark=====");
+    benchmark_logger->info("Use Cutter {} and Surface {} (#F: {})",
+                           model.cutter->str(),
+                           model.stlFilePath,
+                           model.surface->tris.size());
+    
+    // warmup_tbb first
+    warmup_tbb();
+
+    // prepare 1e5 points
+    int max_points = 100000;
+    std::vector<ocl::CLPoint> points;
+    generate_points(*model.surface, max_points, points);
+
+    for (int bucket_size = 1; bucket_size <= 10; bucket_size++) {
+        if (verbose) {
+            benchmark_logger->info("Running Batchdropcutter with bucket size {}", bucket_size);
+        }
+        // Prepare batchdropcutter
+        ocl::BatchDropCutter bdc;
+        bdc.setSTL(*model.surface);
+        bdc.setCutter(model.cutter.get());
+        bdc.setBucketSize(bucket_size);
+
+        for (auto& p : points) {
+            bdc.appendPoint(p);
+        }
+
+        // Run batchdropcutter
+        spdlog::stopwatch sw;
+        bdc.run();
+
+        benchmark_logger->info("Run batchdropcutter with bucket size {} took {} ms: {} calls",
+                               bucket_size,
+                               sw,
+                               bdc.getCalls());
+    }
+
+    benchmark_logger->info("=====End Benchmark=====");
+}
