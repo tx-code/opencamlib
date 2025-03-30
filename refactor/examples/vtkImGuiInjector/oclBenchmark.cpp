@@ -8,6 +8,7 @@
 
 
 #include "STLSurfUtils.h"
+#include "algo/waterline.hpp"
 
 namespace
 {
@@ -127,14 +128,14 @@ void run_batchdropcutter(const CAMModelManager& model, bool verbose)
             bdc.run();
             if (j == 0) {
                 benchmark_logger->info(
-                    "##OpenMP Version: Batchdropcutter with {} points took {} ms: {} calls",
+                    "##OpenMP Version: Batchdropcutter with {} points took {} s: {} calls",
                     max_points,
                     sw,
                     bdc.getCalls());
             }
             else {
                 benchmark_logger->info(
-                    "##TBB Version: Batchdropcutter with {} points took {} ms: {} calls",
+                    "##TBB Version: Batchdropcutter with {} points took {} s: {} calls",
                     max_points,
                     sw,
                     bdc.getCalls());
@@ -189,7 +190,7 @@ void run_SurfaceSubdivisionBatchDropCutter(const CAMModelManager& model, bool ve
         spdlog::stopwatch sw;
         bdc.run();
 
-        benchmark_logger->info("Run batchdropcutter with {} triangles took {} ms: {} calls",
+        benchmark_logger->info("Run batchdropcutter with {} triangles took {} s: {} calls",
                                surface_copy.tris.size(),
                                sw,
                                bdc.getCalls());
@@ -212,7 +213,7 @@ void run_BatchDropCutter_WithDifferentBucketSize(const CAMModelManager& model, b
                            model.cutter->str(),
                            model.stlFilePath,
                            model.surface->tris.size());
-    
+
     // warmup_tbb first
     warmup_tbb();
 
@@ -239,11 +240,175 @@ void run_BatchDropCutter_WithDifferentBucketSize(const CAMModelManager& model, b
         spdlog::stopwatch sw;
         bdc.run();
 
-        benchmark_logger->info("Run batchdropcutter with bucket size {} took {} ms: {} calls",
+        benchmark_logger->info("Run batchdropcutter with bucket size {} took {} s: {} calls",
                                bucket_size,
                                sw,
                                bdc.getCalls());
     }
 
     benchmark_logger->info("=====End Benchmark=====");
+}
+
+void run_WaterlineBenchmark(const CAMModelManager& model, bool verbose)
+{
+    // 如果logger未初始化，则初始化它
+    if (!benchmark_logger) {
+        init_benchmark_logger();
+    }
+
+    benchmark_logger->info("=====Begin Waterline Benchmark=====");
+    benchmark_logger->info("Use Cutter {} and Surface {} (#F: {})",
+                           model.cutter->str(),
+                           model.stlFilePath,
+                           model.surface->tris.size());
+
+    // warmup_tbb first
+    warmup_tbb();
+
+#if 0
+    /// BENCHMARK 1: 不同数量的z值
+    // 测试不同数量的z值
+    std::vector<int> z_counts = {1, 2, 4, 8, 16, 32, 64, 128, 256};
+    
+    for (int z_count : z_counts) {
+        std::vector<double> z_values;
+        
+        // 生成均匀分布的z值
+        double min_z = model.surface->bb.minpt.z;
+        double max_z = model.surface->bb.maxpt.z;
+        double step = (max_z - min_z) / (z_count + 1);
+        double old_total_time = 0.0;
+        double new_total_time = 0.0;
+        
+        for (int i = 1; i <= z_count; i++) {
+            z_values.push_back(min_z + i * step);
+        }
+        
+        // 测试run2 (OpenMP)
+        {
+            ocl::Waterline waterline;
+            waterline.setSTL(*model.surface);
+            waterline.setCutter(model.cutter.get());
+            waterline.setSampling(0.1); // 使用合适的采样率
+            
+            for (double z : z_values) {
+                waterline.setZ(z);
+                waterline.reset();
+                
+                spdlog::stopwatch sw;
+                waterline.run2();
+                double elapsed = sw.elapsed().count();
+                old_total_time += elapsed;
+            }
+            
+            benchmark_logger->info("##OpenMP Version (run2): Total time for {} z-values: {} s, avg: {} s", 
+                                 z_count, old_total_time, old_total_time / z_count);
+        }
+        
+        // 测试run3 (TBB)
+        {
+            ocl::Waterline waterline;
+            waterline.setSTL(*model.surface);
+            waterline.setCutter(model.cutter.get());
+            waterline.setSampling(0.1); // 使用合适的采样率
+            waterline.setZValues(z_values);
+            waterline.setForceUseTBB(true);
+            
+            spdlog::stopwatch sw;
+            waterline.run3();
+            new_total_time = sw.elapsed().count();
+            
+            benchmark_logger->info("##TBB Version (run3): Total time for {} z-values: {} s", 
+                                 z_count, new_total_time);
+            
+            if (verbose) {
+                benchmark_logger->info("run3 generated {} loops for {} z-values", 
+                                     waterline.getLoops().size(), z_count);
+            }
+        }
+        
+        // 计算加速比
+        double acceleration = old_total_time / new_total_time;
+        benchmark_logger->info("Acceleration: {}%", acceleration * 100.0);
+    }
+#endif
+
+    // 新增测试：比较force_use_tbb对Waterline性能的影响，使用固定的64个z值
+    benchmark_logger->info("==== Testing force_use_tbb Impact with 64 fixed z-values ====");
+
+    // 生成32个均匀分布的z值
+    std::vector<double> z_values_32;
+    double min_z = model.surface->bb.minpt.z;
+    double max_z = model.surface->bb.maxpt.z;
+    double step = (max_z - min_z) / 65.0;
+
+    for (int i = 1; i <= 64; i++) {
+        z_values_32.push_back(min_z + i * step);
+    }
+
+    // 使用不同的sampling率测试
+    std::vector<double> sampling_rates = {0.05, 0.1, 0.2, 0.3};
+
+    for (double sampling : sampling_rates) {
+        benchmark_logger->info("== Sampling rate: {} ==", sampling);
+
+        double total_time_openmp = 0.0;
+        double total_time_tbb = 0.0;
+        int total_loops_openmp = 0;
+        int total_loops_tbb = 0;
+
+        ocl::Waterline waterline;
+        waterline.setSTL(*model.surface);
+        waterline.setCutter(model.cutter.get());
+        waterline.setSampling(sampling);
+        waterline.setForceUseTBB(false);
+
+        ocl::Waterline tbb_waterline;
+        tbb_waterline.setSTL(*model.surface);
+        tbb_waterline.setCutter(model.cutter.get());
+        tbb_waterline.setSampling(sampling);
+        tbb_waterline.setForceUseTBB(true);
+        for (double z : z_values_32) {
+            // 测试不开启force_use_tbb (使用OpenMP)
+            {
+                waterline.setZ(z);
+                waterline.reset();
+                spdlog::stopwatch sw;
+                waterline.run2();
+                double elapsed = sw.elapsed().count();
+                total_time_openmp += elapsed;
+                total_loops_openmp += waterline.getLoops().size();
+            }
+
+            // 测试开启force_use_tbb
+            {
+                tbb_waterline.setZ(z);
+                tbb_waterline.reset();
+                spdlog::stopwatch sw;
+                tbb_waterline.run2();
+                double elapsed = sw.elapsed().count();
+                total_time_tbb += elapsed;
+                total_loops_tbb += tbb_waterline.getLoops().size();
+            }
+        }
+
+        // 输出总时间和平均时间
+        benchmark_logger->info(
+            "OpenMP Version: 64 z-values, Total time: {} s, Avg time: {} s, {} loops generated",
+            total_time_openmp,
+            total_time_openmp / 64.0,
+            total_loops_openmp);
+
+        benchmark_logger->info(
+                "TBB Version: 64 z-values, Total time: {} s, Avg time: {} s, {} loops generated",
+            total_time_tbb,
+            total_time_tbb / 64.0,
+            total_loops_tbb);
+
+        // 计算加速比
+        double acceleration = total_time_openmp / total_time_tbb;
+        benchmark_logger->info("Acceleration: {}%", acceleration * 100.0);
+    }
+
+    benchmark_logger->info("=====End Waterline Benchmark=====");
 }

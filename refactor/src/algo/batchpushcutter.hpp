@@ -64,7 +64,7 @@ public:
   void appendFiber(Fiber &f);
 
   /// run push-cutter
-  void run() { this->pushCutter3(); }
+  void run(); 
   // void run() {this->pushCutter1();}
 
   std::vector<Fiber> *getFibers() const { return fibers; }
@@ -77,6 +77,8 @@ protected:
   void pushCutter2();
   /// 3rd version of algorithm
   void pushCutter3();
+  /// 4th version of algorithm (with TBB)
+  void pushCutter4();
 
   /// pointer to list of Fibers
   std::vector<Fiber> *fibers;

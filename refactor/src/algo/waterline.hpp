@@ -48,10 +48,14 @@ public:
 
   /// Set the z-coordinate for the waterline we generate
   void setZ(const double z) { zh = z; }
+  /// Set multiple z-coordinates for generating multiple waterlines
+  void setZValues(const std::vector<double>& z_values) { zhs = z_values; }
   /// run the Waterline algorithm. setSTL, setCutter, setSampling, and setZ must
   /// be called before a call to run()
   virtual void run();
   virtual void run2();
+  /// run the Waterline algorithm with TBB acceleration for multiple z-heights
+  virtual void run3();
 
   /// returns a vector< vector< Point > > with the resulting waterline loops
   std::vector<std::vector<Point>> getLoops() const { return loops; }
@@ -65,12 +69,16 @@ protected:
 
   /// initialization of fibers
   void init_fibers();
+  /// initialize fibers for a specific z-height
+  void init_fibers_at_z(double z_height);
   /// x and y-coordinates for fiber generation
   std::vector<double> generate_range(double start, double end, int N) const;
 
   // DATA
   /// the z-height for this Waterline
   double zh;
+  /// multiple z-heights for waterline generation
+  std::vector<double> zhs;
   /// the results of this operation, a list of loops
   std::vector<std::vector<Point>> loops;
 

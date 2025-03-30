@@ -25,6 +25,11 @@
 #include <omp.h>
 #endif
 
+#include <tbb/blocked_range.h>
+#include <tbb/global_control.h>
+#include <tbb/parallel_for.h>
+#include <tbb/tbb.h>
+
 #include "batchpushcutter.hpp"
 #include "cutters/millingcutter.hpp"
 #include "geo/point.hpp"
@@ -75,6 +80,14 @@ void BatchPushCutter::setSTL(const STLSurf &s) {
 void BatchPushCutter::appendFiber(Fiber &f) { fibers->push_back(f); }
 
 void BatchPushCutter::reset() { fibers->clear(); }
+
+void BatchPushCutter::run() { 
+  if (force_use_tbb) {
+    this->pushCutter4();
+  } else {
+    this->pushCutter3();
+  }
+}
 
 /// very simple batch push-cutter
 /// each fiber is tested against all triangles of surface
@@ -193,6 +206,70 @@ void BatchPushCutter::pushCutter3() {
 
   this->nCalls = calls;
   // std::cout << "\nBatchPushCutter3 done." << std::endl;
+  return;
+}
+
+/// use kd-tree search and TBB for multi-threading
+void BatchPushCutter::pushCutter4() {
+  nCalls = 0;
+  std::vector<Fiber>& fiberr = *fibers;
+  unsigned int Nmax = fibers->size();
+
+  // 使用较大的粒度，减少任务创建的开销
+  size_t grain_size = std::max(
+      size_t(100),
+      Nmax
+          / (4
+             * tbb::global_control::active_value(tbb::global_control::max_allowed_parallelism)));
+
+  // 使用combinable来收集每个线程本地的调用计数，避免频繁的原子操作
+  tbb::combinable<int> local_calls([]() {
+      return 0;
+  });
+
+  // 使用单层并行和auto_partitioner自动调整工作分配
+  tbb::parallel_for(
+      tbb::blocked_range<size_t>(0, Nmax, 1),
+      [&](const tbb::blocked_range<size_t>& range) {
+          int thread_local_calls = 0;
+          std::list<Triangle>::iterator it;
+
+          // 处理当前线程分配到的fiber
+          for (size_t n = range.begin(); n != range.end(); ++n) {
+              CLPoint cl; // cl-point on the fiber
+              if (x_direction) {
+                  cl.x = 0;
+                  cl.y = fiberr[n].p1.y;
+                  cl.z = fiberr[n].p1.z;
+              } else if (y_direction) {
+                  cl.x = fiberr[n].p1.x;
+                  cl.y = 0;
+                  cl.z = fiberr[n].p1.z;
+              }
+              
+              std::list<Triangle>* tris = root->search_cutter_overlap(cutter, &cl);
+              assert(tris);
+
+              // 直接处理所有三角形，不进行二次并行
+              for (it = tris->begin(); it != tris->end(); ++it) {
+                  Interval i;
+                  cutter->pushCutter(fiberr[n], i, *it);
+                  fiberr[n].addInterval(i);
+                  ++thread_local_calls;
+              }
+
+              delete tris;
+          }
+
+          // 更新线程本地计数
+          local_calls.local() += thread_local_calls;
+      },
+      tbb::auto_partitioner());  // 使用auto_partitioner而不是固定粒度
+
+  // 合并所有线程的结果
+  nCalls = local_calls.combine([](int x, int y) {
+      return x + y;
+  });
   return;
 }
 
