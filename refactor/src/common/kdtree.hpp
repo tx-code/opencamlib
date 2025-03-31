@@ -118,7 +118,7 @@ public:
     delete root;
     spdlog::stopwatch sw;
     root = build_node(&list, 0, NULL);
-    spdlog::info("KDTree::build() size:={} time:={} s", list.size(), sw);
+    spdlog::info("KDTree::build() size:={} time:={} ms", list.size(), sw);
   }
 
   /// Get the root node of the kd-tree

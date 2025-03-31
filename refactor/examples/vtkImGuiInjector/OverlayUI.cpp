@@ -670,12 +670,12 @@ void DrawDataModelUI(vtkDearImGuiInjector* injector)
             actorManager.kdtreeActor->SetVisibility(showKDTree);
             ImGui::SameLine();
             updateKDTree |= ImGui::Checkbox("Only leaf nodes", &onlyLeafNodes);
-            if (showKDTree && updateKDTree) {
+            if(showKDTree && updateKDTree) {
                 ocl::KDTree<ocl::Triangle> kdtree;
                 kdtree.setBucketSize(1);
                 kdtree.setXYDimensions();
                 kdtree.build(modelManager.surface->tris);
-
+                
                 UpdateKDTreeActor(actorManager.kdtreeActor, &kdtree, 0.4, onlyLeafNodes);
             }
         }
@@ -880,14 +880,6 @@ void DrawCAMExample(vtkDearImGuiInjector* injector)
             if (ImGui::Button("Run BatchDropCutter (Bucket Size)")) {
                 if (modelManager.cutter && modelManager.surface) {
                     run_BatchDropCutter_WithDifferentBucketSize(modelManager, verbose);
-                }
-                else {
-                    spdlog::error("No cutter or surface");
-                }
-            }
-            if (ImGui::Button("Run WaterLine (W/O TBB)")) {
-                if (modelManager.cutter && modelManager.surface) {
-                    run_WaterlineBenchmark(modelManager, verbose);
                 }
                 else {
                     spdlog::error("No cutter or surface");

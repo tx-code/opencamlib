@@ -15,6 +15,3 @@ void run_BatchDropCutter_WithDifferentBucketSize(const CAMModelManager& model, b
 
 // Use Subdivision algorithm to subdivide the surface, Up to 1e7 facets
 void run_SurfaceSubdivisionBatchDropCutter(const CAMModelManager& model, bool verbose = true);
-
-// Benchmark to compare Waterline run2 and run3 (TBB) performance with different z-values
-void run_WaterlineBenchmark(const CAMModelManager& model, bool verbose = true);

@@ -46,7 +46,6 @@ void waterline(CAMModelManager& model,
     wl.setSTL(*model.surface);
     wl.setCutter(model.cutter.get());
     wl.setSampling(sampling);
-    wl.setForceUseTBB(true);
 
     spdlog::info("Waterline lifting from {} to {} with step {}", lift_from, lift_to, lift_step);
 
@@ -57,7 +56,7 @@ void waterline(CAMModelManager& model,
     for (double h = lift_from; h <= lift_to;) {
         wl.reset();
         wl.setZ(h);
-        wl.run2();
+        wl.run();
         auto loops = wl.getLoops();
         if (verbose) {
             spdlog::info("Got {} loops at height {:.3f}", loops.size(), h);
@@ -67,7 +66,7 @@ void waterline(CAMModelManager& model,
     }
 
     if (verbose) {
-        spdlog::info("Generated {} layers of loops in {:.2f} s", all_loops.size(), sw);
+        spdlog::info("Generated {} layers of loops in {:.2f} ms", all_loops.size(), sw);
     }
 
     UpdateLoopsActor(actorManager.operationActor, all_loops);
@@ -118,7 +117,7 @@ void adaptiveWaterline(CAMModelManager& model,
     }
 
     if (verbose) {
-        spdlog::info("Generated {} layers of adaptive loops in {:.2f} s", all_loops.size(), sw);
+        spdlog::info("Generated {} layers of adaptive loops in {:.2f} ms", all_loops.size(), sw);
     }
 
     UpdateLoopsActor(actorManager.operationActor, all_loops);
@@ -146,7 +145,7 @@ void pathDropCutter(CAMModelManager& model, vtkActorManager& actorManager, doubl
     pdc.setZ(model.surface->bb.minpt.z);
     pdc.run();
     auto points = pdc.getPoints();
-    spdlog::info("PDC done in {} s and got {} points", sw, points.size());
+    spdlog::info("PDC done in {} ms and got {} points", sw, points.size());
 
     UpdateCLPointCloudActor(actorManager.operationActor, actorManager.legendActor, points);
     if (actorManager.operationActor) {
@@ -187,7 +186,7 @@ void randomBatchDropCutter(CAMModelManager& model, vtkActorManager& actorManager
 
     bdc.run(); 
     auto points = bdc.getCLPoints();
-    spdlog::info("RBD done in {} s and got {} points", sw, points.size());
+    spdlog::info("RBD done in {} ms and got {} points", sw, points.size());
 
     UpdateCLPointCloudActor(actorManager.operationActor, actorManager.legendActor, points);
     if (actorManager.operationActor) {
@@ -219,7 +218,7 @@ void adaptivePathDropCutter(CAMModelManager& model,
     apdc.setZ(model.surface->bb.minpt.z);
     apdc.run();
     auto points = apdc.getPoints();
-    spdlog::info("APDC done in {} s and got {} points", sw, points.size());
+    spdlog::info("APDC done in {} ms and got {} points", sw, points.size());
 
     UpdateCLPointCloudActor(actorManager.operationActor, actorManager.legendActor, points);
     if (actorManager.operationActor) {
