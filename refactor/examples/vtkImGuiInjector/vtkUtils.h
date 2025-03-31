@@ -60,6 +60,8 @@
 #include <string>
 #include <vector>
 
+#include "AABBTreeAdaptor.h"
+
 #include "common/kdtree.hpp"
 #include "cutters/ballcutter.hpp"
 #include "cutters/conecutter.hpp"
@@ -70,15 +72,14 @@
 #include "geo/triangle.hpp"
 
 
-struct vtkActorManager
-{
-    vtkSmartPointer<vtkActor> modelActor {vtkSmartPointer<vtkActor>::New()};
-    vtkSmartPointer<vtkActor> cutterActor {vtkSmartPointer<vtkActor>::New()};
-    vtkSmartPointer<vtkActor> operationActor {vtkSmartPointer<vtkActor>::New()};
-    vtkSmartPointer<vtkLegendBoxActor> legendActor {vtkSmartPointer<vtkLegendBoxActor>::New()};
+struct vtkActorManager {
+    vtkSmartPointer<vtkActor> modelActor{vtkSmartPointer<vtkActor>::New()};
+    vtkSmartPointer<vtkActor> cutterActor{vtkSmartPointer<vtkActor>::New()};
+    vtkSmartPointer<vtkActor> operationActor{vtkSmartPointer<vtkActor>::New()};
+    vtkSmartPointer<vtkLegendBoxActor> legendActor{vtkSmartPointer<vtkLegendBoxActor>::New()};
 
-    vtkSmartPointer<vtkActor> kdtreeActor {vtkSmartPointer<vtkActor>::New()};
-    vtkSmartPointer<vtkAxesActor> axesActor {vtkSmartPointer<vtkAxesActor>::New()};
+    vtkSmartPointer<vtkActor> treeActor{vtkSmartPointer<vtkActor>::New()};
+    vtkSmartPointer<vtkAxesActor> axesActor{vtkSmartPointer<vtkAxesActor>::New()};
 };
 
 // Common colors
@@ -101,51 +102,42 @@ constexpr double cyan[3] = {0.0, 1.0, 1.0};
 constexpr double mag[3] = {153.0 / 255.0, 42.0 / 255.0, 165.0 / 255.0};
 
 // Common actor property setting methods
-inline void SetActorColor(vtkActor* actor, const double color[3])
-{
+inline void SetActorColor(vtkActor* actor, const double color[3]) {
     actor->GetProperty()->SetColor(color[0], color[1], color[2]);
 }
 
-inline void SetActorOpacity(vtkActor* actor, double op = 0.5)
-{
+inline void SetActorOpacity(vtkActor* actor, double op = 0.5) {
     actor->GetProperty()->SetOpacity(op);
 }
 
-inline void SetActorWireframe(vtkActor* actor)
-{
+inline void SetActorWireframe(vtkActor* actor) {
     actor->GetProperty()->SetRepresentationToWireframe();
 }
 
-inline void SetActorSurface(vtkActor* actor)
-{
+inline void SetActorSurface(vtkActor* actor) {
     actor->GetProperty()->SetRepresentationToSurface();
 }
 
-inline void SetActorPoints(vtkActor* actor)
-{
+inline void SetActorPoints(vtkActor* actor) {
     actor->GetProperty()->SetRepresentationToPoints();
 }
 
-inline void SetActorFlat(vtkActor* actor)
-{
+inline void SetActorFlat(vtkActor* actor) {
     actor->GetProperty()->SetInterpolationToFlat();
 }
 
-inline void SetActorGouraud(vtkActor* actor)
-{
+inline void SetActorGouraud(vtkActor* actor) {
     actor->GetProperty()->SetInterpolationToGouraud();
 }
 
-inline void SetActorPhong(vtkActor* actor)
-{
+inline void SetActorPhong(vtkActor* actor) {
     actor->GetProperty()->SetInterpolationToPhong();
 }
 
 // Helper functions to create various VTK actors
 
 // Color utility functions based on CC type (cutter-contact type)
-inline void GetClColor(ocl::CCType ccType, double color[3])
-{
+inline void GetClColor(ocl::CCType ccType, double color[3]) {
     switch (ccType) {
         case ocl::CCType::NONE:
             // 白色
@@ -237,13 +229,13 @@ inline void GetClColor(ocl::CCType ccType, double color[3])
             color[1] = 0.75;
             color[2] = 0.75;
             break;
-        case ocl::CCType::FACET_TIP:  // conecutter tip-contact
+        case ocl::CCType::FACET_TIP: // conecutter tip-contact
             // 洋红色
             color[0] = 1.0;
             color[1] = 0.0;
             color[2] = 1.0;
             break;
-        case ocl::CCType::FACET_CYL:  // conecutter cylinder-contact
+        case ocl::CCType::FACET_CYL: // conecutter cylinder-contact
             // 金黄色
             color[0] = 1.0;
             color[1] = 0.84;
@@ -260,8 +252,7 @@ inline void GetClColor(ocl::CCType ccType, double color[3])
 }
 
 // Get CC color based on CC type for visualizing CC points
-inline void GetCcColor(ocl::CCType ccType, double color[3])
-{
+inline void GetCcColor(ocl::CCType ccType, double color[3]) {
     switch (ccType) {
         case ocl::CCType::NONE:
             // 白色
@@ -394,183 +385,13 @@ void UpdateLoopsActor(vtkSmartPointer<vtkActor>& actor,
                       const std::vector<std::vector<std::vector<ocl::Point>>>& all_loops);
 
 // 创建一个KDTree的可视化
-template<class BBObj>
 void UpdateKDTreeActor(vtkSmartPointer<vtkActor>& actor,
-                       const ocl::KDTree<BBObj>* kdtree,
+                       const ocl::KDTree<ocl::Triangle>* kdtree,
                        double opacity = 0.3,
-                       bool onlyLeafNodes = false)
-{
-    if (!kdtree || !kdtree->getRoot()) {
-        spdlog::error("KDTree is null or has no root node");
-        return;
-    }
+                       bool onlyLeafNodes = false);
 
-    vtkNew<vtkUnstructuredGrid> grid;
-    vtkNew<vtkPoints> points;
-
-    if (onlyLeafNodes) {
-        // 递归函数来找到叶子节点并创建可视化
-        std::function<void(ocl::KDNode<BBObj>*)> findLeafNodes = [&](ocl::KDNode<BBObj>* node) {
-            if (!node)
-                return;
-
-            // 如果是叶子节点
-            if (node->isLeaf && node->tris && !node->tris->empty()) {
-                // 计算叶子节点的包围盒
-                ocl::Bbox bbox;
-                bool first = true;
-
-                for (const auto& obj : *(node->tris)) {
-                    if (first) {
-                        bbox = obj.bb;
-                        first = false;
-                    }
-                    else {
-                        bbox.addTriangle(obj);
-                    }
-                }
-
-                // 创建一个vtkVoxel来表示此叶子节点的包围盒
-                vtkNew<vtkVoxel> voxel;
-
-                // 定义八个顶点
-                // bbox[0] = minx, bbox[1] = maxx, bbox[2] = miny,
-                // bbox[3] = maxy, bbox[4] = minz, bbox[5] = maxz
-                const vtkIdType pointIds[8] = {
-                    points->InsertNextPoint(bbox[0], bbox[2], bbox[4]),  // minx, miny, minz
-                    points->InsertNextPoint(bbox[1], bbox[2], bbox[4]),  // maxx, miny, minz
-                    points->InsertNextPoint(bbox[0], bbox[3], bbox[4]),  // minx, maxy, minz
-                    points->InsertNextPoint(bbox[1], bbox[3], bbox[4]),  // maxx, maxy, minz
-                    points->InsertNextPoint(bbox[0], bbox[2], bbox[5]),  // minx, miny, maxz
-                    points->InsertNextPoint(bbox[1], bbox[2], bbox[5]),  // maxx, miny, maxz
-                    points->InsertNextPoint(bbox[0], bbox[3], bbox[5]),  // minx, maxy, maxz
-                    points->InsertNextPoint(bbox[1], bbox[3], bbox[5])   // maxx, maxy, maxz
-                };
-
-                // 设置voxel的顶点
-                for (int i = 0; i < 8; ++i) {
-                    voxel->GetPointIds()->SetId(i, pointIds[i]);
-                }
-
-                // 将voxel插入到网格中
-                grid->InsertNextCell(voxel->GetCellType(), voxel->GetPointIds());
-            }
-            else {
-                // 如果不是叶子节点，继续递归
-                if (node->hi) {
-                    findLeafNodes(node->hi);
-                }
-                if (node->lo) {
-                    findLeafNodes(node->lo);
-                }
-            }
-        };
-
-        // 从根节点开始查找所有叶子节点
-        findLeafNodes(kdtree->getRoot());
-    }
-    else {
-        // 递归函数来构建KDTree的可视化网格
-        std::function<void(ocl::KDNode<BBObj>*, int)> buildGridFromNode =
-            [&](ocl::KDNode<BBObj>* node, int depth) {
-                if (!node)
-                    return;
-
-                // 获取节点的包围盒
-                ocl::Bbox bbox;
-
-                // 如果是叶子节点，从三角形构建包围盒
-                if (node->isLeaf && node->tris) {
-                    bool first = true;
-                    for (const auto& obj : *(node->tris)) {
-                        if (first) {
-                            bbox = obj.bb;
-                            first = false;
-                        }
-                        else {
-                            bbox.addTriangle(obj);
-                        }
-                    }
-                }
-                // 否则基于子节点构建包围盒
-                else {
-                    if (node->hi) {
-                        buildGridFromNode(node->hi, depth + 1);
-                    }
-                    if (node->lo) {
-                        buildGridFromNode(node->lo, depth + 1);
-                    }
-
-                    // 对于非叶子节点，我们根据切分维度创建包围盒
-                    if (node->hi || node->lo) {
-                        // 这部分需要根据KDTree的实际实现调整
-                        // 以下是示例，可能需要根据实际情况修改
-                        double xmin = -1000, xmax = 1000;
-                        double ymin = -1000, ymax = 1000;
-                        double zmin = -1000, zmax = 1000;
-
-                        // 根据切分维度调整bbox
-                        if (node->dim == 0)
-                            xmax = node->cutval;  // X min
-                        else if (node->dim == 1)
-                            xmin = node->cutval;  // X max
-                        else if (node->dim == 2)
-                            ymax = node->cutval;  // Y min
-                        else if (node->dim == 3)
-                            ymin = node->cutval;  // Y max
-                        else if (node->dim == 4)
-                            zmax = node->cutval;  // Z min
-                        else if (node->dim == 5)
-                            zmin = node->cutval;  // Z max
-
-                        bbox = ocl::Bbox(xmin, xmax, ymin, ymax, zmin, zmax);
-                    }
-                }
-
-                // 创建一个vtkVoxel来表示此节点的包围盒
-                vtkNew<vtkVoxel> voxel;
-
-                // 定义八个顶点
-                // bbox[0] = minx, bbox[1] = maxx, bbox[2] = miny,
-                // bbox[3] = maxy, bbox[4] = minz, bbox[5] = maxz
-                const vtkIdType pointIds[8] = {
-                    points->InsertNextPoint(bbox[0], bbox[2], bbox[4]),  // minx, miny, minz
-                    points->InsertNextPoint(bbox[1], bbox[2], bbox[4]),  // maxx, miny, minz
-                    points->InsertNextPoint(bbox[0], bbox[3], bbox[4]),  // minx, maxy, minz
-                    points->InsertNextPoint(bbox[1], bbox[3], bbox[4]),  // maxx, maxy, minz
-                    points->InsertNextPoint(bbox[0], bbox[2], bbox[5]),  // minx, miny, maxz
-                    points->InsertNextPoint(bbox[1], bbox[2], bbox[5]),  // maxx, miny, maxz
-                    points->InsertNextPoint(bbox[0], bbox[3], bbox[5]),  // minx, maxy, maxz
-                    points->InsertNextPoint(bbox[1], bbox[3], bbox[5])   // maxx, maxy, maxz
-                };
-
-                // 设置voxel的顶点
-                for (int i = 0; i < 8; ++i) {
-                    voxel->GetPointIds()->SetId(i, pointIds[i]);
-                }
-
-                // 将voxel插入到网格中
-                grid->InsertNextCell(voxel->GetCellType(), voxel->GetPointIds());
-            };
-
-        // 从根节点开始构建网格
-        buildGridFromNode(kdtree->getRoot(), 0);
-    }
-
-    // 设置网格的点
-    grid->SetPoints(points);
-
-    // 创建一个mapper
-    vtkNew<vtkDataSetMapper> mapper;
-    mapper->SetInputData(grid);
-
-    // 更新actor
-    actor->SetMapper(mapper);
-
-    // 设置颜色和透明度
-    SetActorColor(actor, blue);
-    SetActorOpacity(actor, opacity);
-
-    // 设置为线框显示模式
-    SetActorWireframe(actor);
-}
+// 创建一个AABBTree的可视化
+void UpdateAABBTreeActor(vtkSmartPointer<vtkActor>& actor,
+                         const ocl::TriangleTree& aabbTree,
+                         double opacity = 0.3,
+                         int showLevel = -1);

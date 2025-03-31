@@ -664,20 +664,34 @@ void DrawDataModelUI(vtkDearImGuiInjector* injector)
                 SubdivideSurface(*modelManager.surface);
                 UpdateStlSurfActor(actorManager.modelActor, *modelManager.surface);
             }
-            bool updateKDTree = false;
+            static int treeType = 0;
+            static bool showTree = false;
             static bool onlyLeafNodes = false;
-            static bool showKDTree = false;
-            updateKDTree |= ImGui::Checkbox("Show KDTree", &showKDTree);
-            actorManager.kdtreeActor->SetVisibility(showKDTree);
+            bool updateTree = false;
+            updateTree |= ImGui::Checkbox("Show Tree", &showTree);
             ImGui::SameLine();
-            updateKDTree |= ImGui::Checkbox("Only leaf nodes", &onlyLeafNodes);
-            if (showKDTree && updateKDTree) {
-                ocl::KDTree<ocl::Triangle> kdtree;
-                kdtree.setBucketSize(1);
-                kdtree.setXYDimensions();
-                kdtree.build(modelManager.surface->tris);
-
-                UpdateKDTreeActor(actorManager.kdtreeActor, &kdtree, 0.4, onlyLeafNodes);
+            updateTree |= ImGui::Checkbox("Only leaf nodes", &onlyLeafNodes);
+            updateTree |= ImGui::RadioButton("KDTree", &treeType, 0);
+            ImGui::SameLine();
+            updateTree |= ImGui::RadioButton("AABBTree", &treeType, 1);
+            if (showTree && updateTree) {
+                if (treeType == 0) {
+                    ocl::KDTree<ocl::Triangle> kdtree;
+                    kdtree.setBucketSize(1);
+                    kdtree.setXYDimensions();
+                    kdtree.build(modelManager.surface->tris);
+                    actorManager.treeActor->VisibilityOn();
+                    UpdateKDTreeActor(actorManager.treeActor, &kdtree, 0.4, onlyLeafNodes);
+                }
+                else {
+                    ocl::AABBTreeAdaptor<ocl::Triangle> aabbTree;
+                    aabbTree.build(modelManager.surface->tris);
+                    actorManager.treeActor->VisibilityOn();
+                    UpdateAABBTreeActor(actorManager.treeActor, aabbTree, 0.4);
+                }
+            }
+            else if (!showTree && updateTree) {
+                actorManager.treeActor->VisibilityOff();
             }
         }
         else {
