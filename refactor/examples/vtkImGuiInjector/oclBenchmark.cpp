@@ -7,7 +7,9 @@
 #include <tbb/parallel_for.h>
 
 
+#include "AABBTreeAdaptor.h"
 #include "STLSurfUtils.h"
+
 
 namespace
 {
@@ -32,6 +34,39 @@ void generate_points(const ocl::STLSurf& surface, int max_points, std::vector<oc
     points.resize(max_points);
     for (int i = 0; i < max_points; i++) {
         points[i] = std::move(ocl::CLPoint(dist_x(gen), dist_y(gen), dist_z(gen)));
+    }
+}
+
+void generate_boxes(const ocl::STLSurf& surface, int max_boxes, std::vector<ocl::Bbox>& boxes)
+{
+    // Generate random boxes using modern C++ random generators
+    const auto& minp = surface.bb.minpt;
+    const auto& maxp = surface.bb.maxpt;
+
+    double min_size = min(maxp.x - minp.x, maxp.y - minp.y);
+    min_size = min(min_size, maxp.z - minp.z);
+    double max_size = max(maxp.x - minp.x, maxp.y - minp.y);
+    max_size = max(max_size, maxp.z - minp.z);
+
+    // 创建随机数生成器
+    std::random_device rd;
+    std::mt19937 gen(rd());
+
+    // 为x, y, z坐标创建均匀分布
+    // A random point + a random size
+    std::uniform_real_distribution<double> dist_x(minp.x, maxp.x);
+    std::uniform_real_distribution<double> dist_y(minp.y, maxp.y);
+    std::uniform_real_distribution<double> dist_z(minp.z, maxp.z);
+    std::uniform_real_distribution<double> dist_size(min_size, max_size);
+
+    boxes.resize(max_boxes);
+    for (int i = 0; i < max_boxes; i++) {
+        boxes[i] = std::move(ocl::Bbox(dist_x(gen),
+                                       dist_x(gen) + dist_size(gen),
+                                       dist_y(gen),
+                                       dist_y(gen) + dist_size(gen),
+                                       dist_z(gen),
+                                       dist_z(gen) + dist_size(gen)));
     }
 }
 
@@ -127,14 +162,14 @@ void run_batchdropcutter(const CAMModelManager& model, bool verbose)
             bdc.run();
             if (j == 0) {
                 benchmark_logger->info(
-                    "##OpenMP Version: Batchdropcutter with {} points took {} ms: {} calls",
+                    "##OpenMP Version: Batchdropcutter with {} points took {} s: {} calls",
                     max_points,
                     sw,
                     bdc.getCalls());
             }
             else {
                 benchmark_logger->info(
-                    "##TBB Version: Batchdropcutter with {} points took {} ms: {} calls",
+                    "##TBB Version: Batchdropcutter with {} points took {} s: {} calls",
                     max_points,
                     sw,
                     bdc.getCalls());
@@ -189,7 +224,7 @@ void run_SurfaceSubdivisionBatchDropCutter(const CAMModelManager& model, bool ve
         spdlog::stopwatch sw;
         bdc.run();
 
-        benchmark_logger->info("Run batchdropcutter with {} triangles took {} ms: {} calls",
+        benchmark_logger->info("Run batchdropcutter with {} triangles took {} s: {} calls",
                                surface_copy.tris.size(),
                                sw,
                                bdc.getCalls());
@@ -212,7 +247,7 @@ void run_BatchDropCutter_WithDifferentBucketSize(const CAMModelManager& model, b
                            model.cutter->str(),
                            model.stlFilePath,
                            model.surface->tris.size());
-    
+
     // warmup_tbb first
     warmup_tbb();
 
@@ -239,11 +274,147 @@ void run_BatchDropCutter_WithDifferentBucketSize(const CAMModelManager& model, b
         spdlog::stopwatch sw;
         bdc.run();
 
-        benchmark_logger->info("Run batchdropcutter with bucket size {} took {} ms: {} calls",
+        benchmark_logger->info("Run batchdropcutter with bucket size {} took {} s: {} calls",
                                bucket_size,
                                sw,
                                bdc.getCalls());
     }
+
+    benchmark_logger->info("=====End Benchmark=====");
+}
+
+void run_AABBTree_VS_KDTree(const CAMModelManager& model, bool verbose)
+{
+    // 如果logger未初始化，则初始化它
+    if (!benchmark_logger) {
+        init_benchmark_logger();
+    }
+
+    benchmark_logger->info("=====Begin Benchmark=====");
+    benchmark_logger->info("Use Cutter {} and Surface {} (#F: {})",
+                           model.cutter->str(),
+                           model.stlFilePath,
+                           model.surface->tris.size());
+
+    // warmup_tbb first
+    warmup_tbb();
+
+    benchmark_logger->info("Compare the build time of KDTree and AABBTree");
+
+    // Raw KDTree
+    spdlog::stopwatch sw;
+    ocl::KDTree<ocl::Triangle> kd_tree;
+    kd_tree.build(model.surface->tris);
+    double kd_tree_build_time = sw.elapsed().count();
+    benchmark_logger->info("\tRaw KDTree build with {} triangles took {} s",
+                           model.surface->tris.size(),
+                           kd_tree_build_time);
+
+    sw.reset();
+    // AABBTree
+    ocl::AABBTreeAdaptor<ocl::Triangle> aabb_tree;
+    aabb_tree.build(model.surface->tris);
+    double aabb_tree_build_time = sw.elapsed().count();
+    benchmark_logger->info("\tAABBTree build with {} triangles took {} s",
+                           model.surface->tris.size(),
+                           aabb_tree_build_time);
+
+    // Acceleration
+    benchmark_logger->info("\tAcceleration of the BUILD time: {}%",
+                           kd_tree_build_time / aabb_tree_build_time * 100);
+
+    benchmark_logger->info("Compare the search time of KDTree and AABBTree");
+
+    // Generate 1e2 boxes
+    int max_boxes = 100;
+    std::vector<ocl::Bbox> boxes;
+    generate_boxes(*model.surface, max_boxes, boxes);
+
+    // Search
+    sw.reset();
+    for (auto& box : boxes) {
+        auto res = kd_tree.search(box);
+        delete res;
+    }
+    double kd_tree_search_time = sw.elapsed().count();
+    benchmark_logger->info("\tKDTree search with {} boxes took {} s",
+                           max_boxes,
+                           kd_tree_search_time);
+
+    sw.reset();
+    for (auto& box : boxes) {
+        auto res = aabb_tree.search(box);
+    }
+    double aabb_tree_search_time = sw.elapsed().count();
+    benchmark_logger->info("\tAABBTree search with {} boxes took {} s",
+                           max_boxes,
+                           aabb_tree_search_time);
+
+    // Generate 1e3 boxes
+    max_boxes = 1000;
+    generate_boxes(*model.surface, max_boxes, boxes);
+    sw.reset();
+    for (auto& box : boxes) {
+        auto res = kd_tree.search(box);
+        delete res;
+    }
+    kd_tree_search_time = sw.elapsed().count();
+    benchmark_logger->info("\tKDTree search with {} boxes took {} s",
+                           max_boxes,
+                           kd_tree_search_time);
+
+    sw.reset();
+    for (auto& box : boxes) {
+        auto res = aabb_tree.search(box);
+    }
+    aabb_tree_search_time = sw.elapsed().count();
+    benchmark_logger->info("\tAABBTree search with {} boxes took {} s",
+                           max_boxes,
+                           aabb_tree_search_time);
+
+    // Generate 1e4 boxes
+    max_boxes = 10000;
+    generate_boxes(*model.surface, max_boxes, boxes);
+    sw.reset();
+    for (auto& box : boxes) {
+        auto res = kd_tree.search(box);
+        delete res;
+    }
+    kd_tree_search_time = sw.elapsed().count();
+    benchmark_logger->info("\tKDTree search with {} boxes took {} s",
+                           max_boxes,
+                           kd_tree_search_time);
+
+    sw.reset();
+    for (auto& box : boxes) {
+        auto res = aabb_tree.search(box);
+    }
+    aabb_tree_search_time = sw.elapsed().count();
+    benchmark_logger->info("\tAABBTree search with {} boxes took {} s",
+                           max_boxes,
+                           aabb_tree_search_time);
+
+    // Generate 1e5 boxes
+    max_boxes = 100000;
+    generate_boxes(*model.surface, max_boxes, boxes);
+    sw.reset();
+    for (auto& box : boxes) {
+        auto res = kd_tree.search(box);
+        delete res;
+    }
+    kd_tree_search_time = sw.elapsed().count();
+    benchmark_logger->info("\tKDTree search with {} boxes took {} s",
+                           max_boxes,
+                           kd_tree_search_time);
+
+    sw.reset();
+    for (auto& box : boxes) {
+        auto res = aabb_tree.search(box);
+    }
+    aabb_tree_search_time = sw.elapsed().count();
+    benchmark_logger->info("\tAABBTree search with {} boxes took {} s",
+                           max_boxes,
+                           aabb_tree_search_time);
 
     benchmark_logger->info("=====End Benchmark=====");
 }

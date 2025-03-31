@@ -21,6 +21,7 @@
 #include <vtkRenderWindowInteractor.h>
 #include <vtkSetGet.h>
 
+#include "AABBTreeAdaptor.h"
 #include "CutterTimerCallback.h"
 #include "STLSurfUtils.h"
 #include "oclBenchmark.h"
@@ -670,12 +671,12 @@ void DrawDataModelUI(vtkDearImGuiInjector* injector)
             actorManager.kdtreeActor->SetVisibility(showKDTree);
             ImGui::SameLine();
             updateKDTree |= ImGui::Checkbox("Only leaf nodes", &onlyLeafNodes);
-            if(showKDTree && updateKDTree) {
+            if (showKDTree && updateKDTree) {
                 ocl::KDTree<ocl::Triangle> kdtree;
                 kdtree.setBucketSize(1);
                 kdtree.setXYDimensions();
                 kdtree.build(modelManager.surface->tris);
-                
+
                 UpdateKDTreeActor(actorManager.kdtreeActor, &kdtree, 0.4, onlyLeafNodes);
             }
         }
@@ -885,7 +886,14 @@ void DrawCAMExample(vtkDearImGuiInjector* injector)
                     spdlog::error("No cutter or surface");
                 }
             }
-
+            if (ImGui::Button("Run AABBTree VS KDTree")) {
+                if (modelManager.cutter && modelManager.surface) {
+                    run_AABBTree_VS_KDTree(modelManager, verbose);
+                }
+                else {
+                    spdlog::error("No cutter or surface");
+                }
+            }
             ImGui::EndMenu();
         }
         ImGui::EndMenu();
