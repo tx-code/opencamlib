@@ -312,7 +312,7 @@ void run_AABBTree_VS_KDTree(const CAMModelManager& model, bool verbose)
 
     sw.reset();
     // AABBTree
-    ocl::AABBTreeAdaptor<ocl::Triangle> aabb_tree;
+    ocl::AABBTreeAdaptor aabb_tree;
     aabb_tree.build(model.surface->tris);
     double aabb_tree_build_time = sw.elapsed().count();
     benchmark_logger->info("\tAABBTree build with {} triangles took {} s",
@@ -323,6 +323,9 @@ void run_AABBTree_VS_KDTree(const CAMModelManager& model, bool verbose)
     benchmark_logger->info("\tAcceleration of the BUILD time: {}%",
                            kd_tree_build_time / aabb_tree_build_time * 100);
 
+    //------------------------//
+    // Search Time....        //
+    //------------------------//
     benchmark_logger->info("Compare the search time of KDTree and AABBTree");
 
     // Generate 1e2 boxes
@@ -332,23 +335,33 @@ void run_AABBTree_VS_KDTree(const CAMModelManager& model, bool verbose)
 
     // Search
     sw.reset();
+    std::array search_results {0, 0};
     for (auto& box : boxes) {
         auto res = kd_tree.search(box);
+        search_results[0] += res->size();
         delete res;
     }
     double kd_tree_search_time = sw.elapsed().count();
-    benchmark_logger->info("\tKDTree search with {} boxes took {} s",
+    benchmark_logger->info("\tKDTree search with {} boxes took {} s and find {} results",
                            max_boxes,
-                           kd_tree_search_time);
+                           kd_tree_search_time,
+                           search_results[0]);
 
     sw.reset();
     for (auto& box : boxes) {
         auto res = aabb_tree.search(box);
+        search_results[1] += res.size();
     }
     double aabb_tree_search_time = sw.elapsed().count();
-    benchmark_logger->info("\tAABBTree search with {} boxes took {} s",
+    benchmark_logger->info("\tAABBTree search with {} boxes took {} s and find {} results",
                            max_boxes,
-                           aabb_tree_search_time);
+                           aabb_tree_search_time,
+                           search_results[1]);
+
+    if (search_results[0] != search_results[1]) {
+        spdlog::warn("Search results are not equal");
+    }
+    search_results.fill(0);
 
     // Generate 1e3 boxes
     max_boxes = 1000;
@@ -356,21 +369,30 @@ void run_AABBTree_VS_KDTree(const CAMModelManager& model, bool verbose)
     sw.reset();
     for (auto& box : boxes) {
         auto res = kd_tree.search(box);
+        search_results[0] += res->size();
         delete res;
     }
     kd_tree_search_time = sw.elapsed().count();
-    benchmark_logger->info("\tKDTree search with {} boxes took {} s",
+    benchmark_logger->info("\tKDTree search with {} boxes took {} s and find {} results",
                            max_boxes,
-                           kd_tree_search_time);
+                           kd_tree_search_time,
+                           search_results[0]);
 
     sw.reset();
     for (auto& box : boxes) {
         auto res = aabb_tree.search(box);
+        search_results[1] += res.size();
     }
     aabb_tree_search_time = sw.elapsed().count();
-    benchmark_logger->info("\tAABBTree search with {} boxes took {} s",
+    benchmark_logger->info("\tAABBTree search with {} boxes took {} s and find {} results",
                            max_boxes,
-                           aabb_tree_search_time);
+                           aabb_tree_search_time,
+                           search_results[1]);
+
+    if (search_results[0] != search_results[1]) {
+        spdlog::warn("Search results are not equal");
+    }
+    search_results.fill(0);
 
     // Generate 1e4 boxes
     max_boxes = 10000;
@@ -378,21 +400,30 @@ void run_AABBTree_VS_KDTree(const CAMModelManager& model, bool verbose)
     sw.reset();
     for (auto& box : boxes) {
         auto res = kd_tree.search(box);
+        search_results[0] += res->size();
         delete res;
     }
     kd_tree_search_time = sw.elapsed().count();
-    benchmark_logger->info("\tKDTree search with {} boxes took {} s",
+    benchmark_logger->info("\tKDTree search with {} boxes took {} s and find {} results",
                            max_boxes,
-                           kd_tree_search_time);
+                           kd_tree_search_time,
+                           search_results[0]);
 
     sw.reset();
     for (auto& box : boxes) {
         auto res = aabb_tree.search(box);
+        search_results[1] += res.size();
     }
     aabb_tree_search_time = sw.elapsed().count();
-    benchmark_logger->info("\tAABBTree search with {} boxes took {} s",
+    benchmark_logger->info("\tAABBTree search with {} boxes took {} s and find {} results",
                            max_boxes,
-                           aabb_tree_search_time);
+                           aabb_tree_search_time,
+                           search_results[1]);
+
+    if (search_results[0] != search_results[1]) {
+        spdlog::warn("Search results are not equal");
+    }
+    search_results.fill(0);
 
     // Generate 1e5 boxes
     max_boxes = 100000;
@@ -400,21 +431,28 @@ void run_AABBTree_VS_KDTree(const CAMModelManager& model, bool verbose)
     sw.reset();
     for (auto& box : boxes) {
         auto res = kd_tree.search(box);
+        search_results[0] += res->size();
         delete res;
     }
     kd_tree_search_time = sw.elapsed().count();
-    benchmark_logger->info("\tKDTree search with {} boxes took {} s",
+    benchmark_logger->info("\tKDTree search with {} boxes took {} s and find {} results",
                            max_boxes,
-                           kd_tree_search_time);
+                           kd_tree_search_time,
+                           search_results[0]);
 
     sw.reset();
     for (auto& box : boxes) {
         auto res = aabb_tree.search(box);
+        search_results[1] += res.size();
     }
     aabb_tree_search_time = sw.elapsed().count();
-    benchmark_logger->info("\tAABBTree search with {} boxes took {} s",
+    benchmark_logger->info("\tAABBTree search with {} boxes took {} s and find {} results",
                            max_boxes,
-                           aabb_tree_search_time);
+                           aabb_tree_search_time,
+                           search_results[1]);
+    if (search_results[0] != search_results[1]) {
+        spdlog::warn("Search results are not equal");
+    }
 
     benchmark_logger->info("=====End Benchmark=====");
 }

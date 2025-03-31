@@ -392,6 +392,6 @@ void UpdateKDTreeActor(vtkSmartPointer<vtkActor>& actor,
 
 // 创建一个AABBTree的可视化
 void UpdateAABBTreeActor(vtkSmartPointer<vtkActor>& actor,
-                         const ocl::TriangleTree& aabbTree,
+                         const ocl::AABBTreeAdaptor& aabbTree,
                          double opacity = 0.3,
                          int showLevel = -1);

@@ -683,15 +683,17 @@ void DrawDataModelUI(vtkDearImGuiInjector* injector)
                     kdtree.setBucketSize(1);
                     kdtree.setXYDimensions();
                     kdtree.build(modelManager.surface->tris);
-                    spdlog::info("KDTree allocated {} MB", (CGAL::Memory_sizer().virtual_size() - memory_before) >> 20);
+                    spdlog::info("KDTree allocated {} MB",
+                                 (CGAL::Memory_sizer().virtual_size() - memory_before) >> 20);
                     actorManager.treeActor->VisibilityOn();
                     UpdateKDTreeActor(actorManager.treeActor, &kdtree, 0.4, onlyLeafNodes);
                 }
                 else {
                     auto memory_before = CGAL::Memory_sizer().virtual_size();
-                    ocl::AABBTreeAdaptor<ocl::Triangle> aabbTree;
+                    ocl::AABBTreeAdaptor aabbTree;
                     aabbTree.build(modelManager.surface->tris);
-                    spdlog::info("AABBTree allocated {} MB", (CGAL::Memory_sizer().virtual_size() - memory_before) >> 20);
+                    spdlog::info("AABBTree allocated {} MB",
+                                 (CGAL::Memory_sizer().virtual_size() - memory_before) >> 20);
                     actorManager.treeActor->VisibilityOn();
                     UpdateAABBTreeActor(actorManager.treeActor, aabbTree, 0.4);
                 }

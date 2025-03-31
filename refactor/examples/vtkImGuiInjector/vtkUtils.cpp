@@ -497,14 +497,14 @@ void UpdateKDTreeActor(vtkSmartPointer<vtkActor>& actor,
 }
 
 void UpdateAABBTreeActor(vtkSmartPointer<vtkActor>& actor,
-                         const ocl::TriangleTree& aabbTree,
+                         const ocl::AABBTreeAdaptor& aabbTree,
                          double opacity,
                          int showLevel)
 {
     std::vector<std::vector<CGAL::Bbox_3>> boxes;
 
     // 从AABB树获取根节点
-    const ocl::TriangleTree::Tree& tree = aabbTree.getTree();
+    const auto& tree = aabbTree.getTree();
     if (!tree.size()) {
         spdlog::error("AABBTree is empty");
         return;
@@ -512,9 +512,9 @@ void UpdateAABBTreeActor(vtkSmartPointer<vtkActor>& actor,
 
     // 递归遍历AABB树，收集所有高度层级的包围盒
     // 递归函数来收集包围盒
-    std::function<void(const std::size_t, const ocl::TriangleTree::Node&, int)> traversal =
+    std::function<void(const std::size_t, const ocl::AABBTreeAdaptor::Node&, int)> traversal =
         [&boxes, &traversal](const std::size_t nb_primitives,
-                             const ocl::TriangleTree::Node& node,
+                             const ocl::AABBTreeAdaptor::Node& node,
                              int lvl) {
             // 确保boxes有足够空间存储当前层级的boxes
             if (static_cast<int>(boxes.size()) <= lvl)
