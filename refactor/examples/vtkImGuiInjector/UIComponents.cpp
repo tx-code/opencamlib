@@ -452,6 +452,23 @@ void UIComponents::DrawCutterModelUI(vtkDearImGuiInjector* injector)
             if (std::find(touched.begin(), touched.end(), true) != touched.end()) {
                 cutter->GetProperty()->SetRepresentation(representation);
             }
+
+            if (modelManager.surface) {
+                if (ImGui::BeginMenu("Advanced")) {
+                    if (ImGui::Button("Test Overlaps")) {
+                        // FIXME, CACHE the AABBTree and Add Visulization
+                        // Coloried the triangles that are overlapped by the cutter (XY plane)
+                        const auto& tris = modelManager.surface->tris;
+                        ocl::AABBTreeAdaptor aabbTree;
+                        aabbTree.build(tris);
+                        ocl::CLPoint cl(pos[0], pos[1], pos[2]);
+
+                        auto res = aabbTree.search_cutter_overlap(modelManager.cutter.get(), &cl);
+                        spdlog::info("Found {} triangles overlapped by the cutter", res.size());
+                    }
+                    ImGui::EndMenu();
+                }
+            }
         }
         else {
             ImGui::TextDisabled("No Cutter");
