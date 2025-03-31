@@ -56,6 +56,10 @@ add_executable(vtkImGuiInjector
     oclUtils.cpp
     STLSurfUtils.cpp
     oclBenchmark.cpp
+    RecentFilesManager.cpp
+    SettingsManager.cpp
+    DialogHelpers.cpp
+    UIComponents.cpp
 )
 
 if(VTK_VERSION VERSION_LESS "9.0.0")
