@@ -11,8 +11,11 @@
 #include <vtkConeSource.h>
 #include <vtkCubeSource.h>
 #include <vtkCylinderSource.h>
+#include <vtkDataSetMapper.h>
 #include <vtkDoubleArray.h>
+#include <vtkExtractEdges.h>
 #include <vtkFollower.h>
+#include <vtkHexahedron.h>
 #include <vtkIntArray.h>
 #include <vtkLegendBoxActor.h>
 #include <vtkLight.h>
@@ -23,6 +26,7 @@
 #include <vtkMath.h>
 #include <vtkNamedColors.h>
 #include <vtkNew.h>
+#include <vtkOutlineFilter.h>
 #include <vtkPointData.h>
 #include <vtkPointSource.h>
 #include <vtkPoints.h>
@@ -43,15 +47,12 @@
 #include <vtkTriangle.h>
 #include <vtkTubeFilter.h>
 #include <vtkUnsignedCharArray.h>
+#include <vtkUnstructuredGrid.h>
 #include <vtkVectorText.h>
 #include <vtkVertex.h>
 #include <vtkVertexGlyphFilter.h>
-#include <vtkUnstructuredGrid.h>
-#include <vtkHexahedron.h>
-#include <vtkDataSetMapper.h>
-#include <vtkOutlineFilter.h>
-#include <vtkExtractEdges.h>
 #include <vtkVoxel.h>
+
 
 #include <cmath>
 #include <memory>
@@ -59,6 +60,7 @@
 #include <string>
 #include <vector>
 
+#include "common/kdtree.hpp"
 #include "cutters/ballcutter.hpp"
 #include "cutters/conecutter.hpp"
 #include "cutters/cylcutter.hpp"
@@ -66,7 +68,7 @@
 #include "geo/clpoint.hpp"
 #include "geo/stlsurf.hpp"
 #include "geo/triangle.hpp"
-#include "common/kdtree.hpp"
+
 
 struct vtkActorManager
 {
@@ -140,343 +142,6 @@ inline void SetActorPhong(vtkActor* actor)
 }
 
 // Helper functions to create various VTK actors
-
-// Create a cone actor
-inline vtkSmartPointer<vtkActor> CreateCone(double center[3] = nullptr,
-                                            double radius = 1.0,
-                                            double angle = 45.0,
-                                            double height = 0.4,
-                                            const double color[3] = red,
-                                            int resolution = 60)
-{
-    double defaultCenter[3] = {-2.0, 0.0, 0.0};
-    if (!center)
-        center = defaultCenter;
-
-    vtkNew<vtkConeSource> source;
-    source->SetResolution(resolution);
-    source->SetRadius(radius);
-    source->SetHeight(height);
-
-    vtkNew<vtkTransform> transform;
-    transform->Translate(center[0], center[1], center[2] - source->GetHeight() / 2);
-    transform->RotateY(-90);
-
-    vtkNew<vtkTransformPolyDataFilter> transformFilter;
-    transformFilter->SetTransform(transform);
-    transformFilter->SetInputConnection(source->GetOutputPort());
-    transformFilter->Update();
-
-    vtkNew<vtkPolyDataMapper> mapper;
-    mapper->SetInputData(transformFilter->GetOutput());
-
-    vtkNew<vtkActor> actor;
-    actor->SetMapper(mapper);
-    SetActorColor(actor, color);
-
-    return actor;
-}
-
-// Create a sphere actor
-inline vtkSmartPointer<vtkActor> CreateSphere(double radius = 1.0,
-                                              int resolution = 20,
-                                              double center[3] = nullptr,
-                                              const double color[3] = red)
-{
-    double defaultCenter[3] = {0.0, 2.0, 0.0};
-    if (!center)
-        center = defaultCenter;
-
-    vtkNew<vtkSphereSource> source;
-    source->SetRadius(radius);
-    source->SetCenter(center);
-    source->SetThetaResolution(resolution);
-    source->SetPhiResolution(resolution);
-    source->Update();
-
-    vtkNew<vtkPolyDataMapper> mapper;
-    mapper->SetInputData(source->GetOutput());
-
-    vtkNew<vtkActor> actor;
-    actor->SetMapper(mapper);
-    SetActorColor(actor, color);
-
-    return actor;
-}
-
-// Create a cube actor
-inline vtkSmartPointer<vtkActor>
-CreateCube(double center[3] = nullptr, double length = 1.0, const double color[3] = green)
-{
-    double defaultCenter[3] = {2.0, 2.0, 0.0};
-    if (!center)
-        center = defaultCenter;
-
-    vtkNew<vtkCubeSource> source;
-    source->SetCenter(center);
-    source->SetXLength(length);
-    source->SetYLength(length);
-    source->SetZLength(length);
-
-    vtkNew<vtkPolyDataMapper> mapper;
-    mapper->SetInputData(source->GetOutput());
-
-    vtkNew<vtkActor> actor;
-    actor->SetMapper(mapper);
-    SetActorColor(actor, color);
-
-    return actor;
-}
-
-// Create a cylinder actor
-inline vtkSmartPointer<vtkActor> CreateCylinder(double center[3] = nullptr,
-                                                double radius = 0.5,
-                                                double height = 2.0,
-                                                const double color[3] = cyan,
-                                                double rotXYZ[3] = nullptr,
-                                                int resolution = 50)
-{
-    double defaultCenter[3] = {0.0, -2.0, 0.0};
-    if (!center)
-        center = defaultCenter;
-
-    double defaultRot[3] = {0.0, 0.0, 0.0};
-    if (!rotXYZ)
-        rotXYZ = defaultRot;
-
-    vtkNew<vtkCylinderSource> source;
-    source->SetCenter(0, 0, 0);
-    source->SetHeight(height);
-    source->SetRadius(radius);
-    source->SetResolution(resolution);
-
-    vtkNew<vtkTransform> transform;
-    transform->Translate(center[0], center[1], center[2] + height / 2);
-    transform->RotateX(rotXYZ[0]);
-
-    vtkNew<vtkTransformPolyDataFilter> transformFilter;
-    transformFilter->SetTransform(transform);
-    transformFilter->SetInputConnection(source->GetOutputPort());
-    transformFilter->Update();
-
-    vtkNew<vtkPolyDataMapper> mapper;
-    mapper->SetInputData(transformFilter->GetOutput());
-
-    vtkNew<vtkActor> actor;
-    actor->SetMapper(mapper);
-    SetActorColor(actor, color);
-
-    return actor;
-}
-
-// Create a line actor
-inline vtkSmartPointer<vtkActor>
-CreateLine(double p1[3] = nullptr, double p2[3] = nullptr, const double color[3] = cyan)
-{
-    double defaultP1[3] = {0.0, 0.0, 0.0};
-    double defaultP2[3] = {1.0, 1.0, 1.0};
-    if (!p1)
-        p1 = defaultP1;
-    if (!p2)
-        p2 = defaultP2;
-
-    vtkNew<vtkLineSource> source;
-    source->SetPoint1(p1);
-    source->SetPoint2(p2);
-    source->Update();
-
-    vtkNew<vtkPolyDataMapper> mapper;
-    mapper->SetInputData(source->GetOutput());
-
-    vtkNew<vtkActor> actor;
-    actor->SetMapper(mapper);
-    SetActorColor(actor, color);
-
-    return actor;
-}
-
-inline vtkSmartPointer<vtkActor>
-CreateLine(const ocl::Point& p1, const ocl::Point& p2, const double color[3] = cyan)
-{
-    double p1_data[3] = {p1.x, p1.y, p1.z};
-    double p2_data[3] = {p2.x, p2.y, p2.z};
-    return CreateLine(p1_data, p2_data, color);
-}
-
-// Create a tube actor (line with thickness)
-inline vtkSmartPointer<vtkActor> CreateTube(double p1[3] = nullptr,
-                                            double p2[3] = nullptr,
-                                            double radius = 0.1,
-                                            const double color[3] = cyan)
-{
-    double defaultP1[3] = {0.0, 0.0, 0.0};
-    double defaultP2[3] = {1.0, 1.0, 1.0};
-    if (!p1)
-        p1 = defaultP1;
-    if (!p2)
-        p2 = defaultP2;
-
-    vtkNew<vtkPoints> points;
-    points->InsertNextPoint(p1);
-    points->InsertNextPoint(p2);
-
-    vtkNew<vtkLine> line;
-    line->GetPointIds()->SetId(0, 0);
-    line->GetPointIds()->SetId(1, 1);
-
-    vtkNew<vtkCellArray> lines;
-    lines->InsertNextCell(line->GetNumberOfPoints(), line->GetPointIds()->GetPointer(0));
-
-    vtkNew<vtkPolyData> polyData;
-    polyData->SetPoints(points);
-    polyData->SetLines(lines);
-
-    vtkNew<vtkTubeFilter> tubeFilter;
-    tubeFilter->SetInputData(polyData);
-    tubeFilter->SetRadius(radius);
-    tubeFilter->SetNumberOfSides(50);
-    tubeFilter->Update();
-
-    vtkNew<vtkPolyDataMapper> mapper;
-    mapper->SetInputData(tubeFilter->GetOutput());
-
-    vtkNew<vtkActor> actor;
-    actor->SetMapper(mapper);
-    SetActorColor(actor, color);
-
-    return actor;
-}
-
-// Create a circle actor
-inline vtkSmartPointer<vtkActor> CreateCircle(double center[3] = nullptr,
-                                              double radius = 1.0,
-                                              const double color[3] = cyan,
-                                              int resolution = 50)
-{
-    double defaultCenter[3] = {0.0, 0.0, 0.0};
-    if (!center)
-        center = defaultCenter;
-
-    vtkNew<vtkPoints> points;
-    vtkNew<vtkCellArray> lines;
-
-    int id = 0;
-    for (int n = 0; n < resolution; n++) {
-        vtkNew<vtkLine> line;
-        double angle1 = (double(n) / double(resolution)) * 2 * vtkMath::Pi();
-        double angle2 = (double(n + 1) / double(resolution)) * 2 * vtkMath::Pi();
-
-        double p1[3] = {center[0] + radius * std::cos(angle1),
-                        center[1] + radius * std::sin(angle1),
-                        center[2]};
-
-        double p2[3] = {center[0] + radius * std::cos(angle2),
-                        center[1] + radius * std::sin(angle2),
-                        center[2]};
-
-        points->InsertNextPoint(p1);
-        points->InsertNextPoint(p2);
-
-        line->GetPointIds()->SetId(0, id++);
-        line->GetPointIds()->SetId(1, id++);
-
-        lines->InsertNextCell(line->GetNumberOfPoints(), line->GetPointIds()->GetPointer(0));
-    }
-
-    vtkNew<vtkPolyData> polyData;
-    polyData->SetPoints(points);
-    polyData->SetLines(lines);
-
-    vtkNew<vtkPolyDataMapper> mapper;
-    mapper->SetInputData(polyData);
-
-    vtkNew<vtkActor> actor;
-    actor->SetMapper(mapper);
-    SetActorColor(actor, color);
-
-    return actor;
-}
-
-// Create a point actor
-inline vtkSmartPointer<vtkActor> CreatePoint(double center[3] = nullptr,
-                                             const double color[3] = red)
-{
-    double defaultCenter[3] = {0.0, 0.0, 0.0};
-    if (!center)
-        center = defaultCenter;
-
-    vtkNew<vtkPointSource> source;
-    source->SetCenter(center);
-    source->SetRadius(0);
-    source->SetNumberOfPoints(1);
-
-    vtkNew<vtkPolyDataMapper> mapper;
-    mapper->SetInputData(source->GetOutput());
-
-    vtkNew<vtkActor> actor;
-    actor->SetMapper(mapper);
-    SetActorColor(actor, color);
-
-    return actor;
-}
-
-// Create an arrow actor
-inline vtkSmartPointer<vtkActor>
-CreateArrow(double center[3] = nullptr, const double color[3] = blue, double rotXYZ[3] = nullptr)
-{
-    double defaultCenter[3] = {0.0, 0.0, 0.0};
-    if (!center)
-        center = defaultCenter;
-
-    double defaultRot[3] = {0.0, 0.0, 0.0};
-    if (!rotXYZ)
-        rotXYZ = defaultRot;
-
-    vtkNew<vtkArrowSource> source;
-
-    vtkNew<vtkTransform> transform;
-    transform->Translate(center[0], center[1], center[2]);
-    transform->RotateX(rotXYZ[0]);
-    transform->RotateY(rotXYZ[1]);
-    transform->RotateZ(rotXYZ[2]);
-
-    vtkNew<vtkTransformPolyDataFilter> transformFilter;
-    transformFilter->SetTransform(transform);
-    transformFilter->SetInputConnection(source->GetOutputPort());
-    transformFilter->Update();
-
-    vtkNew<vtkPolyDataMapper> mapper;
-    mapper->SetInputData(transformFilter->GetOutput());
-
-    vtkNew<vtkActor> actor;
-    actor->SetMapper(mapper);
-    SetActorColor(actor, color);
-
-    return actor;
-}
-
-// Create a 2D text actor for HUD-like text
-inline vtkSmartPointer<vtkTextActor> CreateText(const std::string& text = "text",
-                                                int size = 18,
-                                                const double color[3] = white,
-                                                int pos[2] = nullptr)
-{
-    int defaultPos[2] = {100, 100};
-    if (!pos)
-        pos = defaultPos;
-
-    vtkNew<vtkTextActor> actor;
-    actor->SetInput(text.c_str());
-
-    auto properties = actor->GetTextProperty();
-    properties->SetFontFamilyToArial();
-    properties->SetFontSize(size);
-    properties->SetColor(color[0], color[1], color[2]);
-
-    actor->SetDisplayPosition(pos[0], pos[1]);
-
-    return actor;
-}
 
 // Color utility functions based on CC type (cutter-contact type)
 inline void GetClColor(ocl::CCType ccType, double color[3])
@@ -729,11 +394,12 @@ void UpdateLoopsActor(vtkSmartPointer<vtkActor>& actor,
                       const std::vector<std::vector<std::vector<ocl::Point>>>& all_loops);
 
 // 创建一个KDTree的可视化
-template <class BBObj>
+template<class BBObj>
 void UpdateKDTreeActor(vtkSmartPointer<vtkActor>& actor,
-                       const ocl::KDTree<BBObj>* kdtree, 
+                       const ocl::KDTree<BBObj>* kdtree,
                        double opacity = 0.3,
-                       bool onlyLeafNodes = false) {
+                       bool onlyLeafNodes = false)
+{
     if (!kdtree || !kdtree->getRoot()) {
         spdlog::error("KDTree is null or has no root node");
         return;
@@ -741,118 +407,32 @@ void UpdateKDTreeActor(vtkSmartPointer<vtkActor>& actor,
 
     vtkNew<vtkUnstructuredGrid> grid;
     vtkNew<vtkPoints> points;
-    
+
     if (onlyLeafNodes) {
         // 递归函数来找到叶子节点并创建可视化
-        std::function<void(ocl::KDNode<BBObj>*)> findLeafNodes = 
-            [&](ocl::KDNode<BBObj>* node) {
-                if (!node) return;
-                
-                // 如果是叶子节点
-                if (node->isLeaf && node->tris && !node->tris->empty()) {
-                    // 计算叶子节点的包围盒
-                    ocl::Bbox bbox;
-                    bool first = true;
-                    
-                    for (const auto& obj : *(node->tris)) {
-                        if (first) {
-                            bbox = obj.bb;
-                            first = false;
-                        } else {
-                            bbox.addTriangle(obj);
-                        }
-                    }
-                    
-                    // 创建一个vtkVoxel来表示此叶子节点的包围盒
-                    vtkNew<vtkVoxel> voxel;
-                    
-                    // 定义八个顶点
-                    // bbox[0] = minx, bbox[1] = maxx, bbox[2] = miny,
-                    // bbox[3] = maxy, bbox[4] = minz, bbox[5] = maxz
-                    const vtkIdType pointIds[8] = {
-                        points->InsertNextPoint(bbox[0], bbox[2], bbox[4]),  // minx, miny, minz
-                        points->InsertNextPoint(bbox[1], bbox[2], bbox[4]),  // maxx, miny, minz
-                        points->InsertNextPoint(bbox[0], bbox[3], bbox[4]),  // minx, maxy, minz
-                        points->InsertNextPoint(bbox[1], bbox[3], bbox[4]),  // maxx, maxy, minz
-                        points->InsertNextPoint(bbox[0], bbox[2], bbox[5]),  // minx, miny, maxz
-                        points->InsertNextPoint(bbox[1], bbox[2], bbox[5]),  // maxx, miny, maxz
-                        points->InsertNextPoint(bbox[0], bbox[3], bbox[5]),  // minx, maxy, maxz
-                        points->InsertNextPoint(bbox[1], bbox[3], bbox[5])   // maxx, maxy, maxz
-                    };
-                    
-                    // 设置voxel的顶点
-                    for (int i = 0; i < 8; ++i) {
-                        voxel->GetPointIds()->SetId(i, pointIds[i]);
-                    }
-                    
-                    // 将voxel插入到网格中
-                    grid->InsertNextCell(voxel->GetCellType(), voxel->GetPointIds());
-                } else {
-                    // 如果不是叶子节点，继续递归
-                    if (node->hi) {
-                        findLeafNodes(node->hi);
-                    }
-                    if (node->lo) {
-                        findLeafNodes(node->lo);
-                    }
-                }
-            };
-        
-        // 从根节点开始查找所有叶子节点
-        findLeafNodes(kdtree->getRoot());
-    } else {
-        // 递归函数来构建KDTree的可视化网格
-        std::function<void(ocl::KDNode<BBObj>*, int)> buildGridFromNode = 
-            [&](ocl::KDNode<BBObj>* node, int depth) {
-                if (!node) return;
-                
-                // 获取节点的包围盒
+        std::function<void(ocl::KDNode<BBObj>*)> findLeafNodes = [&](ocl::KDNode<BBObj>* node) {
+            if (!node)
+                return;
+
+            // 如果是叶子节点
+            if (node->isLeaf && node->tris && !node->tris->empty()) {
+                // 计算叶子节点的包围盒
                 ocl::Bbox bbox;
-                
-                // 如果是叶子节点，从三角形构建包围盒
-                if (node->isLeaf && node->tris) {
-                    bool first = true;
-                    for (const auto& obj : *(node->tris)) {
-                        if (first) {
-                            bbox = obj.bb;
-                            first = false;
-                        } else {
-                            bbox.addTriangle(obj);
-                        }
+                bool first = true;
+
+                for (const auto& obj : *(node->tris)) {
+                    if (first) {
+                        bbox = obj.bb;
+                        first = false;
                     }
-                } 
-                // 否则基于子节点构建包围盒
-                else {
-                    if (node->hi) {
-                        buildGridFromNode(node->hi, depth + 1);
-                    }
-                    if (node->lo) {
-                        buildGridFromNode(node->lo, depth + 1);
-                    }
-                    
-                    // 对于非叶子节点，我们根据切分维度创建包围盒
-                    if (node->hi || node->lo) {
-                        // 这部分需要根据KDTree的实际实现调整
-                        // 以下是示例，可能需要根据实际情况修改
-                        double xmin = -1000, xmax = 1000;
-                        double ymin = -1000, ymax = 1000;
-                        double zmin = -1000, zmax = 1000;
-                        
-                        // 根据切分维度调整bbox
-                        if (node->dim == 0) xmax = node->cutval;      // X min
-                        else if (node->dim == 1) xmin = node->cutval; // X max
-                        else if (node->dim == 2) ymax = node->cutval; // Y min
-                        else if (node->dim == 3) ymin = node->cutval; // Y max
-                        else if (node->dim == 4) zmax = node->cutval; // Z min
-                        else if (node->dim == 5) zmin = node->cutval; // Z max
-                        
-                        bbox = ocl::Bbox(xmin, xmax, ymin, ymax, zmin, zmax);
+                    else {
+                        bbox.addTriangle(obj);
                     }
                 }
-                
-                // 创建一个vtkVoxel来表示此节点的包围盒
+
+                // 创建一个vtkVoxel来表示此叶子节点的包围盒
                 vtkNew<vtkVoxel> voxel;
-                
+
                 // 定义八个顶点
                 // bbox[0] = minx, bbox[1] = maxx, bbox[2] = miny,
                 // bbox[3] = maxy, bbox[4] = minz, bbox[5] = maxz
@@ -866,34 +446,131 @@ void UpdateKDTreeActor(vtkSmartPointer<vtkActor>& actor,
                     points->InsertNextPoint(bbox[0], bbox[3], bbox[5]),  // minx, maxy, maxz
                     points->InsertNextPoint(bbox[1], bbox[3], bbox[5])   // maxx, maxy, maxz
                 };
-                
+
                 // 设置voxel的顶点
                 for (int i = 0; i < 8; ++i) {
                     voxel->GetPointIds()->SetId(i, pointIds[i]);
                 }
-                
+
+                // 将voxel插入到网格中
+                grid->InsertNextCell(voxel->GetCellType(), voxel->GetPointIds());
+            }
+            else {
+                // 如果不是叶子节点，继续递归
+                if (node->hi) {
+                    findLeafNodes(node->hi);
+                }
+                if (node->lo) {
+                    findLeafNodes(node->lo);
+                }
+            }
+        };
+
+        // 从根节点开始查找所有叶子节点
+        findLeafNodes(kdtree->getRoot());
+    }
+    else {
+        // 递归函数来构建KDTree的可视化网格
+        std::function<void(ocl::KDNode<BBObj>*, int)> buildGridFromNode =
+            [&](ocl::KDNode<BBObj>* node, int depth) {
+                if (!node)
+                    return;
+
+                // 获取节点的包围盒
+                ocl::Bbox bbox;
+
+                // 如果是叶子节点，从三角形构建包围盒
+                if (node->isLeaf && node->tris) {
+                    bool first = true;
+                    for (const auto& obj : *(node->tris)) {
+                        if (first) {
+                            bbox = obj.bb;
+                            first = false;
+                        }
+                        else {
+                            bbox.addTriangle(obj);
+                        }
+                    }
+                }
+                // 否则基于子节点构建包围盒
+                else {
+                    if (node->hi) {
+                        buildGridFromNode(node->hi, depth + 1);
+                    }
+                    if (node->lo) {
+                        buildGridFromNode(node->lo, depth + 1);
+                    }
+
+                    // 对于非叶子节点，我们根据切分维度创建包围盒
+                    if (node->hi || node->lo) {
+                        // 这部分需要根据KDTree的实际实现调整
+                        // 以下是示例，可能需要根据实际情况修改
+                        double xmin = -1000, xmax = 1000;
+                        double ymin = -1000, ymax = 1000;
+                        double zmin = -1000, zmax = 1000;
+
+                        // 根据切分维度调整bbox
+                        if (node->dim == 0)
+                            xmax = node->cutval;  // X min
+                        else if (node->dim == 1)
+                            xmin = node->cutval;  // X max
+                        else if (node->dim == 2)
+                            ymax = node->cutval;  // Y min
+                        else if (node->dim == 3)
+                            ymin = node->cutval;  // Y max
+                        else if (node->dim == 4)
+                            zmax = node->cutval;  // Z min
+                        else if (node->dim == 5)
+                            zmin = node->cutval;  // Z max
+
+                        bbox = ocl::Bbox(xmin, xmax, ymin, ymax, zmin, zmax);
+                    }
+                }
+
+                // 创建一个vtkVoxel来表示此节点的包围盒
+                vtkNew<vtkVoxel> voxel;
+
+                // 定义八个顶点
+                // bbox[0] = minx, bbox[1] = maxx, bbox[2] = miny,
+                // bbox[3] = maxy, bbox[4] = minz, bbox[5] = maxz
+                const vtkIdType pointIds[8] = {
+                    points->InsertNextPoint(bbox[0], bbox[2], bbox[4]),  // minx, miny, minz
+                    points->InsertNextPoint(bbox[1], bbox[2], bbox[4]),  // maxx, miny, minz
+                    points->InsertNextPoint(bbox[0], bbox[3], bbox[4]),  // minx, maxy, minz
+                    points->InsertNextPoint(bbox[1], bbox[3], bbox[4]),  // maxx, maxy, minz
+                    points->InsertNextPoint(bbox[0], bbox[2], bbox[5]),  // minx, miny, maxz
+                    points->InsertNextPoint(bbox[1], bbox[2], bbox[5]),  // maxx, miny, maxz
+                    points->InsertNextPoint(bbox[0], bbox[3], bbox[5]),  // minx, maxy, maxz
+                    points->InsertNextPoint(bbox[1], bbox[3], bbox[5])   // maxx, maxy, maxz
+                };
+
+                // 设置voxel的顶点
+                for (int i = 0; i < 8; ++i) {
+                    voxel->GetPointIds()->SetId(i, pointIds[i]);
+                }
+
                 // 将voxel插入到网格中
                 grid->InsertNextCell(voxel->GetCellType(), voxel->GetPointIds());
             };
-        
+
         // 从根节点开始构建网格
         buildGridFromNode(kdtree->getRoot(), 0);
     }
-    
+
     // 设置网格的点
     grid->SetPoints(points);
-    
+
     // 创建一个mapper
     vtkNew<vtkDataSetMapper> mapper;
     mapper->SetInputData(grid);
-    
+
     // 更新actor
     actor->SetMapper(mapper);
-    
+
     // 设置颜色和透明度
     SetActorColor(actor, blue);
     SetActorOpacity(actor, opacity);
-    
+
     // 设置为线框显示模式
     SetActorWireframe(actor);
 }
