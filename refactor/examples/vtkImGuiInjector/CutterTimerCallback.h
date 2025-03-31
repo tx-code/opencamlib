@@ -5,6 +5,7 @@
 #include <vtkObject.h>
 #include <vtkPoints.h>
 #include <vtkRenderWindowInteractor.h>
+#include <vtkRenderWindow.h>
 
 
 // 刀具路径动画的定时器回调

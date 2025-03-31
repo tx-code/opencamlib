@@ -1,27 +1,30 @@
 #include "UIComponents.h"
 
+#include "AABBTreeAdaptor.h"
+#include "CutterTimerCallback.h"
 #include "DialogHelpers.h"
 #include "RecentFilesManager.h"
-#include "SettingsManager.h"
-#include "vtkDearImGuiInjector.h"
-#include "CutterTimerCallback.h"
 #include "STLSurfUtils.h"
+#include "SettingsManager.h"
 #include "oclBenchmark.h"
 #include "oclUtils.h"
 #include "vtkCutters.h"
-#include "AABBTreeAdaptor.h"
+#include "vtkDearImGuiInjector.h"
+
 
 #include <CGAL/Memory_sizer.h>
 #include <algorithm>
 #include <boost/math/constants/constants.hpp>
 #include <imgui.h>
+#include <spdlog/spdlog.h>
+#include <vtkMapper.h>
 #include <vtkPoints.h>
 #include <vtkPolyData.h>
-#include <vtkMapper.h>
 #include <vtkSmartPointer.h>
-#include <spdlog/spdlog.h>
 
-namespace ocl {
+
+namespace ocl
+{
 
 // 全局回调对象
 static vtkSmartPointer<CutterTimerCallback> g_cutterCallback;
@@ -35,7 +38,8 @@ void UIComponents::DrawLoadStlUI(vtkDearImGuiInjector* injector)
         std::string filePath;
         if (DialogHelpers::OpenSTLFileDialog(filePath)) {
             modelManager.surface = std::make_unique<ocl::STLSurf>();
-            ocl::STLReader reader(DialogHelpers::ToWString(filePath.c_str()), *modelManager.surface);
+            ocl::STLReader reader(DialogHelpers::ToWString(filePath.c_str()),
+                                  *modelManager.surface);
             UpdateStlSurfActor(actorManager.modelActor, *modelManager.surface);
             injector->ForceResetCamera();
 
@@ -58,7 +62,8 @@ void UIComponents::DrawLoadStlUI(vtkDearImGuiInjector* injector)
                 if (ImGui::MenuItem(filePath.c_str())) {
                     // 加载选择的文件
                     modelManager.surface = std::make_unique<ocl::STLSurf>();
-                    ocl::STLReader reader(DialogHelpers::ToWString(filePath.c_str()), *modelManager.surface);
+                    ocl::STLReader reader(DialogHelpers::ToWString(filePath.c_str()),
+                                          *modelManager.surface);
                     UpdateStlSurfActor(actorManager.modelActor, *modelManager.surface);
                     injector->ForceResetCamera();
 
@@ -189,8 +194,7 @@ void UIComponents::DrawOperationUI(vtkDearImGuiInjector* injector)
 
         switch (settings.op_type_index) {
             case 0:
-                changed |=
-                    ImGui::InputDouble("Sampling", &settings.sampling, 0.01f, 1.0f, "%.3f");
+                changed |= ImGui::InputDouble("Sampling", &settings.sampling, 0.01f, 1.0f, "%.3f");
                 changed |=
                     ImGui::InputDouble("Lift Step", &settings.lift_step, 0.01f, 1.0f, "%.3f");
                 changed |=
@@ -198,13 +202,9 @@ void UIComponents::DrawOperationUI(vtkDearImGuiInjector* injector)
                 changed |= ImGui::InputDouble("Lift To", &settings.lift_to, 0.01f, 1.0f, "%.3f");
                 break;
             case 1:
+                changed |= ImGui::InputDouble("Sampling", &settings.sampling, 0.01f, 1.0f, "%.3f");
                 changed |=
-                    ImGui::InputDouble("Sampling", &settings.sampling, 0.01f, 1.0f, "%.3f");
-                changed |= ImGui::InputDouble("Min Sampling",
-                                              &settings.min_sampling,
-                                              0.01f,
-                                              1.0f,
-                                              "%.3f");
+                    ImGui::InputDouble("Min Sampling", &settings.min_sampling, 0.01f, 1.0f, "%.3f");
                 changed |=
                     ImGui::InputDouble("Lift Step", &settings.lift_step, 0.01f, 1.0f, "%.3f");
                 changed |=
@@ -212,21 +212,15 @@ void UIComponents::DrawOperationUI(vtkDearImGuiInjector* injector)
                 changed |= ImGui::InputDouble("Lift To", &settings.lift_to, 0.01f, 1.0f, "%.3f");
                 break;
             case 2:
-                changed |=
-                    ImGui::InputDouble("Sampling", &settings.sampling, 0.01f, 1.0f, "%.3f");
+                changed |= ImGui::InputDouble("Sampling", &settings.sampling, 0.01f, 1.0f, "%.3f");
                 break;
             case 3:
+                changed |= ImGui::InputDouble("Sampling", &settings.sampling, 0.01f, 1.0f, "%.3f");
                 changed |=
-                    ImGui::InputDouble("Sampling", &settings.sampling, 0.01f, 1.0f, "%.3f");
-                changed |= ImGui::InputDouble("Min Sampling",
-                                              &settings.min_sampling,
-                                              0.01f,
-                                              1.0f,
-                                              "%.3f");
+                    ImGui::InputDouble("Min Sampling", &settings.min_sampling, 0.01f, 1.0f, "%.3f");
                 break;
             case 4:
-                changed |=
-                    ImGui::InputDouble("Sampling", &settings.sampling, 0.01f, 1.0f, "%.3f");
+                changed |= ImGui::InputDouble("Sampling", &settings.sampling, 0.01f, 1.0f, "%.3f");
                 changed |= ImGui::InputInt("Random Points", &settings.random_points, 1000, 10000);
                 break;
             default:
@@ -423,11 +417,32 @@ void UIComponents::DrawCutterModelUI(vtkDearImGuiInjector* injector)
     }
     if (ImGui::TreeNode("Cutters")) {
         if (modelManager.cutter) {
-            auto cutter = actorManager.cutterActor;
+            auto& cutter = actorManager.cutterActor;
             ImGui::Text(cutter->GetObjectName().c_str());
             bool visible = cutter->GetVisibility();
             ImGui::Checkbox("Show Cutter", &visible);
             cutter->SetVisibility(visible);
+
+            static bool moveCutter = false;
+            ImGui::Checkbox("Move", &moveCutter);
+            ImGui::SameLine();
+            ImGui::BeginDisabled(!moveCutter);
+            double pos[3];
+            double* actorPos = cutter->GetPosition();
+            std::copy(actorPos, actorPos + 3, pos);
+            static double minPos = -1e5;
+            static double maxPos = 1e5;
+            if (ImGui::DragScalarN("Position",
+                                   ImGuiDataType_Double,
+                                   pos,
+                                   3,
+                                   0.1f,
+                                   &minPos,
+                                   &maxPos,
+                                   "%.3f")) {
+                cutter->SetPosition(pos);
+            }
+            ImGui::EndDisabled();
 
             int representation = cutter->GetProperty()->GetRepresentation();
             std::array<bool, 2> touched;
@@ -445,7 +460,9 @@ void UIComponents::DrawCutterModelUI(vtkDearImGuiInjector* injector)
     }
 }
 
-void UIComponents::DrawCutterAnimationUI(vtkDearImGuiInjector* injector, vtkPoints* points, int& pointIndex)
+void UIComponents::DrawCutterAnimationUI(vtkDearImGuiInjector* injector,
+                                         vtkPoints* points,
+                                         int& pointIndex)
 {
     auto& actorManager = injector->ActorManager;
 
@@ -624,4 +641,4 @@ void UIComponents::DrawCAMExample(vtkDearImGuiInjector* injector)
     DrawOperationModelUI(injector);
 }
 
-} // namespace ocl 
+}  // namespace ocl
