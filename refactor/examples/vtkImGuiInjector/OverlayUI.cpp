@@ -6,6 +6,7 @@
 #include "vtkDearImGuiInjector.h"
 
 
+#include <CGAL/Memory_sizer.h>
 #include <algorithm>
 #include <boost/math/constants/constants.hpp>
 #include <codecvt>
@@ -20,6 +21,7 @@
 #include <vtkRenderWindow.h>
 #include <vtkRenderWindowInteractor.h>
 #include <vtkSetGet.h>
+
 
 #include "AABBTreeAdaptor.h"
 #include "CutterTimerCallback.h"
@@ -676,16 +678,20 @@ void DrawDataModelUI(vtkDearImGuiInjector* injector)
             updateTree |= ImGui::RadioButton("AABBTree", &treeType, 1);
             if (showTree && updateTree) {
                 if (treeType == 0) {
+                    auto memory_before = CGAL::Memory_sizer().virtual_size();
                     ocl::KDTree<ocl::Triangle> kdtree;
                     kdtree.setBucketSize(1);
                     kdtree.setXYDimensions();
                     kdtree.build(modelManager.surface->tris);
+                    spdlog::info("KDTree allocated {} MB", (CGAL::Memory_sizer().virtual_size() - memory_before) >> 20);
                     actorManager.treeActor->VisibilityOn();
                     UpdateKDTreeActor(actorManager.treeActor, &kdtree, 0.4, onlyLeafNodes);
                 }
                 else {
+                    auto memory_before = CGAL::Memory_sizer().virtual_size();
                     ocl::AABBTreeAdaptor<ocl::Triangle> aabbTree;
                     aabbTree.build(modelManager.surface->tris);
+                    spdlog::info("AABBTree allocated {} MB", (CGAL::Memory_sizer().virtual_size() - memory_before) >> 20);
                     actorManager.treeActor->VisibilityOn();
                     UpdateAABBTreeActor(actorManager.treeActor, aabbTree, 0.4);
                 }
