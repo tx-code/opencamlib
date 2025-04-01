@@ -242,3 +242,32 @@ void hello_ocl()
     spdlog::info("ocl version: {}", ocl::version());
     spdlog::info("max threads: {}", ocl::max_threads());
 }
+
+std::vector<ocl::CLPoint> debugPointDropCutter(CAMModelManager& model, const ocl::CLPoint& inputCL)
+{
+    int calls = 0;
+    if (!model.surface || !model.cutter || !model.aabbTree) {
+        spdlog::error("No surface or cutter or aabbTree");
+        return {};
+    }
+
+    auto tris = model.aabbTree->search_cutter_overlap(model.cutter.get(), &inputCL);
+    std::vector<ocl::CLPoint> res;
+    ocl::CLPoint cl = inputCL;
+    spdlog::info("The initial point is at {}", cl.str());
+    // Loop over found triangles
+    for (const auto& tri : tris) {
+        // Cutter overlap triangle? check
+        if (model.cutter->overlaps(cl, tri)) {
+            if (cl.below(tri)) {
+                if (model.cutter->dropCutter(cl, tri)) {
+                    spdlog::info("The point is at {}", cl.str());
+                    res.emplace_back(cl);
+                }
+                calls++;
+            }
+        }
+    }
+    spdlog::info("DropCutter done in {} calls and got {} points", calls, res.size());
+    return res;
+}

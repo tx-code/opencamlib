@@ -71,17 +71,6 @@
 #include "geo/stlsurf.hpp"
 #include "geo/triangle.hpp"
 
-
-struct vtkActorManager {
-    vtkSmartPointer<vtkActor> modelActor{vtkSmartPointer<vtkActor>::New()};
-    vtkSmartPointer<vtkActor> cutterActor{vtkSmartPointer<vtkActor>::New()};
-    vtkSmartPointer<vtkActor> operationActor{vtkSmartPointer<vtkActor>::New()};
-    vtkSmartPointer<vtkLegendBoxActor> legendActor{vtkSmartPointer<vtkLegendBoxActor>::New()};
-
-    vtkSmartPointer<vtkActor> treeActor{vtkSmartPointer<vtkActor>::New()};
-    vtkSmartPointer<vtkAxesActor> axesActor{vtkSmartPointer<vtkAxesActor>::New()};
-};
-
 // Common colors
 constexpr double white[3] = {1.0, 1.0, 1.0};
 constexpr double black[3] = {0.0, 0.0, 0.0};
@@ -102,42 +91,51 @@ constexpr double cyan[3] = {0.0, 1.0, 1.0};
 constexpr double mag[3] = {153.0 / 255.0, 42.0 / 255.0, 165.0 / 255.0};
 
 // Common actor property setting methods
-inline void SetActorColor(vtkActor* actor, const double color[3]) {
+inline void SetActorColor(vtkActor* actor, const double color[3])
+{
     actor->GetProperty()->SetColor(color[0], color[1], color[2]);
 }
 
-inline void SetActorOpacity(vtkActor* actor, double op = 0.5) {
+inline void SetActorOpacity(vtkActor* actor, double op = 0.5)
+{
     actor->GetProperty()->SetOpacity(op);
 }
 
-inline void SetActorWireframe(vtkActor* actor) {
+inline void SetActorWireframe(vtkActor* actor)
+{
     actor->GetProperty()->SetRepresentationToWireframe();
 }
 
-inline void SetActorSurface(vtkActor* actor) {
+inline void SetActorSurface(vtkActor* actor)
+{
     actor->GetProperty()->SetRepresentationToSurface();
 }
 
-inline void SetActorPoints(vtkActor* actor) {
+inline void SetActorPoints(vtkActor* actor)
+{
     actor->GetProperty()->SetRepresentationToPoints();
 }
 
-inline void SetActorFlat(vtkActor* actor) {
+inline void SetActorFlat(vtkActor* actor)
+{
     actor->GetProperty()->SetInterpolationToFlat();
 }
 
-inline void SetActorGouraud(vtkActor* actor) {
+inline void SetActorGouraud(vtkActor* actor)
+{
     actor->GetProperty()->SetInterpolationToGouraud();
 }
 
-inline void SetActorPhong(vtkActor* actor) {
+inline void SetActorPhong(vtkActor* actor)
+{
     actor->GetProperty()->SetInterpolationToPhong();
 }
 
 // Helper functions to create various VTK actors
 
 // Color utility functions based on CC type (cutter-contact type)
-inline void GetClColor(ocl::CCType ccType, double color[3]) {
+inline void GetClColor(ocl::CCType ccType, double color[3])
+{
     switch (ccType) {
         case ocl::CCType::NONE:
             // 白色
@@ -229,13 +227,13 @@ inline void GetClColor(ocl::CCType ccType, double color[3]) {
             color[1] = 0.75;
             color[2] = 0.75;
             break;
-        case ocl::CCType::FACET_TIP: // conecutter tip-contact
+        case ocl::CCType::FACET_TIP:  // conecutter tip-contact
             // 洋红色
             color[0] = 1.0;
             color[1] = 0.0;
             color[2] = 1.0;
             break;
-        case ocl::CCType::FACET_CYL: // conecutter cylinder-contact
+        case ocl::CCType::FACET_CYL:  // conecutter cylinder-contact
             // 金黄色
             color[0] = 1.0;
             color[1] = 0.84;
@@ -252,7 +250,8 @@ inline void GetClColor(ocl::CCType ccType, double color[3]) {
 }
 
 // Get CC color based on CC type for visualizing CC points
-inline void GetCcColor(ocl::CCType ccType, double color[3]) {
+inline void GetCcColor(ocl::CCType ccType, double color[3])
+{
     switch (ccType) {
         case ocl::CCType::NONE:
             // 白色
@@ -395,3 +394,9 @@ void UpdateAABBTreeActor(vtkSmartPointer<vtkActor>& actor,
                          const ocl::AABBTreeAdaptor& aabbTree,
                          double opacity = 0.3,
                          int showLevel = -1);
+
+// 可视化被刀具覆盖的三角形
+void UpdateOverlappedTrianglesActor(vtkSmartPointer<vtkActor>& actor,
+                                    const std::vector<ocl::Triangle>& triangles,
+                                    const double color[3] = red,
+                                    double opacity = 0.7);

@@ -654,3 +654,60 @@ void UpdateAABBTreeActor(vtkSmartPointer<vtkActor>& actor,
     // 设置为线框显示模式
     SetActorWireframe(actor);
 }
+
+void UpdateOverlappedTrianglesActor(vtkSmartPointer<vtkActor>& actor,
+                                    const std::vector<ocl::Triangle>& triangles,
+                                    const double color[3],
+                                    double opacity)
+{
+    assert(actor);
+    vtkNew<vtkPoints> points;
+    vtkNew<vtkCellArray> cells;
+
+    int pointId = 0;
+    for (const auto triangle : triangles) {
+
+        vtkNew<vtkTriangle> vtkTri;
+
+        // Add points for this triangle
+        for (int j = 0; j < 3; j++) {
+            const ocl::Point& p = triangle.p[j];
+            points->InsertNextPoint(p.x, p.y, p.z);
+            vtkTri->GetPointIds()->SetId(j, pointId++);
+        }
+
+        cells->InsertNextCell(vtkTri);
+    }
+
+    vtkNew<vtkPolyData> polyData;
+    polyData->SetPoints(points);
+    polyData->SetPolys(cells);
+
+    // 计算表面法线以实现更好的渲染效果
+    vtkNew<vtkPolyDataNormals> normalGenerator;
+    normalGenerator->SetInputData(polyData);
+    normalGenerator->ComputePointNormalsOn();
+    normalGenerator->ComputeCellNormalsOn();
+    normalGenerator->Update();
+
+    vtkNew<vtkPolyDataMapper> mapper;
+    mapper->SetInputConnection(normalGenerator->GetOutputPort());
+
+    // 调整mapper设置确保可见性
+    mapper->SetResolveCoincidentTopologyToPolygonOffset();
+    mapper->SetResolveCoincidentTopologyPolygonOffsetParameters(-1.0, -1.0);
+
+    actor->SetMapper(mapper);
+    SetActorColor(actor, color);
+    SetActorOpacity(actor, opacity);
+
+    // 设置高亮效果
+    actor->GetProperty()->SetEdgeVisibility(true);
+    actor->GetProperty()->SetEdgeColor(1.0, 1.0, 1.0);  // 白色边缘
+    actor->GetProperty()->SetLineWidth(2.0);
+
+    // 提高渲染顺序（确保在其他对象之后渲染）
+    actor->SetPosition(0, 0, 0.01);  // 略微向观察者方向移动
+
+    actor->SetObjectName(fmt::format("Overlapped Triangles(N={})", triangles.size()));
+}

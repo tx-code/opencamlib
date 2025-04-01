@@ -158,6 +158,7 @@ bool vtkDearImGuiInjector::SetUp(vtkRenderWindow* renWin)
     renderer->AddActor(this->ActorManager.operationActor);
     renderer->AddActor(this->ActorManager.axesActor);
     renderer->AddActor(this->ActorManager.treeActor);
+    renderer->AddActor(this->ActorManager.debugActor);
     renderer->ResetCamera();
 
     // Configure ImGui IO

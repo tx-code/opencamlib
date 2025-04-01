@@ -29,6 +29,11 @@ namespace ocl
 // 全局回调对象
 static vtkSmartPointer<CutterTimerCallback> g_cutterCallback;
 
+// 用于Debug DropCutter的静态变量
+static std::vector<ocl::CLPoint> g_debugResultPoints;
+static int g_debugCurrentPointIndex = 0;
+static bool g_showDebugWindow = false;  // 控制调试窗口显示
+
 void UIComponents::DrawLoadStlUI(vtkDearImGuiInjector* injector)
 {
     auto& modelManager = injector->ModelManager;
@@ -46,6 +51,12 @@ void UIComponents::DrawLoadStlUI(vtkDearImGuiInjector* injector)
             // 保存文件路径并添加到最近文件列表
             modelManager.stlFilePath = filePath;
             RecentFilesManager::AddToRecentFiles(filePath);
+
+            // 重建AABBTree
+            modelManager.rebuildAABBTree();
+
+            // 隐藏重叠三角形actor
+            actorManager.debugActor->VisibilityOff();
         }
     }
 
@@ -69,6 +80,12 @@ void UIComponents::DrawLoadStlUI(vtkDearImGuiInjector* injector)
 
                     // 更新当前文件路径
                     modelManager.stlFilePath = filePath;
+
+                    // 重建AABBTree
+                    modelManager.rebuildAABBTree();
+
+                    // 隐藏重叠三角形actor
+                    actorManager.debugActor->VisibilityOff();
                 }
             }
 
@@ -156,6 +173,9 @@ void UIComponents::DrawCutterUI(vtkDearImGuiInjector* injector)
             }
             UpdateCutterActor(actorManager.cutterActor, *modelManager.cutter, ocl::Point(0, 0, 0));
             injector->ForceResetCamera();
+
+            // 隐藏重叠三角形actor
+            actorManager.debugActor->VisibilityOff();
         }
 
         ImGui::SameLine();
@@ -234,6 +254,9 @@ void UIComponents::DrawOperationUI(vtkDearImGuiInjector* injector)
 
         if (ImGui::Button("Run Operation")) {
             if (modelManager.cutter && modelManager.surface) {
+                // 隐藏重叠三角形actor
+                actorManager.debugActor->VisibilityOff();
+
                 switch (settings.op_type_index) {
                     case 0:
                         waterline(modelManager,
@@ -357,11 +380,15 @@ void UIComponents::DrawDataModelUI(vtkDearImGuiInjector* injector)
             if (ImGui::Button("Random Perturbation")) {
                 RandomPerturbation(*modelManager.surface, max_move_distance, true);
                 UpdateStlSurfActor(actorManager.modelActor, *modelManager.surface);
+                // 重建AABBTree
+                modelManager.rebuildAABBTree();
             }
 
             if (ImGui::Button("Subdivision once")) {
                 SubdivideSurface(*modelManager.surface);
                 UpdateStlSurfActor(actorManager.modelActor, *modelManager.surface);
+                // 重建AABBTree
+                modelManager.rebuildAABBTree();
             }
             static int treeType = 0;
             static bool showTree = false;
@@ -374,6 +401,8 @@ void UIComponents::DrawDataModelUI(vtkDearImGuiInjector* injector)
             ImGui::SameLine();
             updateTree |= ImGui::RadioButton("AABBTree", &treeType, 1);
             if (showTree && updateTree) {
+                // Although we can cache the tree, we rebuild it here for the sake of simplicity and
+                // test memory usage
                 if (treeType == 0) {
                     auto memory_before = CGAL::Memory_sizer().virtual_size();
                     ocl::KDTree<ocl::Triangle> kdtree;
@@ -455,17 +484,63 @@ void UIComponents::DrawCutterModelUI(vtkDearImGuiInjector* injector)
 
             if (modelManager.surface) {
                 if (ImGui::BeginMenu("Advanced")) {
+                    bool debugVisible = actorManager.debugActor->GetVisibility();
+                    ImGui::MenuItem("Show DebugActor", nullptr, &debugVisible);
+                    actorManager.debugActor->SetVisibility(debugVisible);
                     if (ImGui::Button("Test Overlaps")) {
-                        // FIXME, CACHE the AABBTree and Add Visulization
-                        // Coloried the triangles that are overlapped by the cutter (XY plane)
-                        const auto& tris = modelManager.surface->tris;
-                        ocl::AABBTreeAdaptor aabbTree;
-                        aabbTree.build(tris);
+                        // 使用缓存的AABBTree
                         ocl::CLPoint cl(pos[0], pos[1], pos[2]);
 
-                        auto res = aabbTree.search_cutter_overlap(modelManager.cutter.get(), &cl);
-                        spdlog::info("Found {} triangles overlapped by the cutter", res.size());
+                        // 如果AABBTree不存在，先构建它
+                        if (!modelManager.aabbTree) {
+                            modelManager.rebuildAABBTree();
+                        }
+
+                        std::vector<ocl::Triangle> res;
+                        if (modelManager.aabbTree) {
+                            res = modelManager.aabbTree->search_cutter_overlap(
+                                modelManager.cutter.get(),
+                                &cl);
+                            spdlog::info("Found {} triangles overlapped by the cutter", res.size());
+                        }
+                        else {
+                            spdlog::error("Failed to build AABBTree");
+                        }
+
+                        // 可视化被刀具覆盖的三角形
+                        if (!res.empty()) {
+                            UpdateOverlappedTrianglesActor(actorManager.debugActor, res);
+                            actorManager.debugActor->VisibilityOn();
+                        }
+                        else {
+                            actorManager.debugActor->VisibilityOff();
+                        }
                     }
+                    if (ImGui::Button("Debug Point DropCutter")) {
+                        auto res = debugPointDropCutter(modelManager,
+                                                        ocl::CLPoint(pos[0], pos[1], pos[2]));
+                        UpdateCLPointCloudActor(actorManager.debugActor,
+                                                actorManager.legendActor,
+                                                res);
+
+                        // 当结果不为空时，设置标志以显示调试窗口
+                        if (!res.empty()) {
+                            // 保存结果点到全局变量，以便在窗口中使用
+                            g_debugResultPoints = res;
+                            g_debugCurrentPointIndex = 0;
+
+                            // 显示调试窗口
+                            g_showDebugWindow = true;
+
+                            actorManager.debugActor->VisibilityOn();
+                            spdlog::info("Found {} CC points for debugging", res.size());
+                        }
+                        else {
+                            actorManager.debugActor->VisibilityOff();
+                            spdlog::warn("No CC points found for debugging");
+                        }
+                    }
+
                     ImGui::EndMenu();
                 }
             }
@@ -656,6 +731,106 @@ void UIComponents::DrawCAMExample(vtkDearImGuiInjector* injector)
     DrawDataModelUI(injector);
     DrawCutterModelUI(injector);
     DrawOperationModelUI(injector);
+
+    // 绘制Debug DropCutter窗口 (在ImGui主窗口外独立显示)
+    DrawDebugDropCutterWindow(injector);
+}
+
+void UIComponents::DrawDebugDropCutterWindow(vtkDearImGuiInjector* injector)
+{
+    auto& actorManager = injector->ActorManager;
+    auto& modelManager = injector->ModelManager;
+
+    if (!g_showDebugWindow || g_debugResultPoints.empty()) {
+        return;
+    }
+
+    ImGui::SetNextWindowSize(ImVec2(400, 420), ImGuiCond_FirstUseEver);
+
+    // 使用固定位置的窗口，靠近屏幕右侧
+    ImVec2 viewportSize = ImGui::GetMainViewport()->Size;
+    ImVec2 windowPos(viewportSize.x - 420, 100);
+    ImGui::SetNextWindowPos(windowPos, ImGuiCond_FirstUseEver);
+
+    if (ImGui::Begin("Debug DropCutter Control",
+                     &g_showDebugWindow,
+                     ImGuiWindowFlags_AlwaysAutoResize)) {
+        // 如果有结果点
+        const auto& currentPoint = g_debugResultPoints[g_debugCurrentPointIndex];
+        auto* cc = currentPoint.cc.load();
+
+        // 点的基本信息
+        ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f),
+                           "Point %d/%zu",
+                           g_debugCurrentPointIndex + 1,
+                           g_debugResultPoints.size());
+
+        ImGui::Separator();
+
+        // 坐标信息
+        ImGui::Text("Position: (%.3f, %.3f, %.3f)", currentPoint.x, currentPoint.y, currentPoint.z);
+
+        // 如果有CC点，显示其详细信息
+        if (cc) {
+            // CC类型信息，添加颜色以区分不同类型
+            double color[3];
+            GetClColor(cc->type, color);
+            ImGui::TextColored(ImVec4(color[0], color[1], color[2], 1.0f),
+                               "CC Type: %s",
+                               ocl::CCType2String(cc->type).c_str());
+
+            ImGui::Text("CC Point: (%.3f, %.3f, %.3f)", cc->x, cc->y, cc->z);
+
+            // 距离信息
+            ImGui::Text("Triangle Distance: %.6f", currentPoint.z - cc->z);
+        }
+
+        ImGui::Separator();
+
+        // 上下箭头按钮控制
+        ImGui::BeginGroup();
+        ImGui::Text("Navigate Points:");
+        ImGui::SameLine();
+
+        bool upPressed = ImGui::ArrowButton("##up", ImGuiDir_Up);
+        ImGui::SameLine();
+        bool downPressed = ImGui::ArrowButton("##down", ImGuiDir_Down);
+
+        if (upPressed && g_debugCurrentPointIndex > 0) {
+            g_debugCurrentPointIndex--;
+        }
+
+        if (downPressed
+            && g_debugCurrentPointIndex < static_cast<int>(g_debugResultPoints.size() - 1)) {
+            g_debugCurrentPointIndex++;
+        }
+        ImGui::EndGroup();
+
+        // 显示滑块控制
+        int tempIndex = g_debugCurrentPointIndex;
+        if (ImGui::SliderInt("Point Index", &tempIndex, 0, g_debugResultPoints.size() - 1)) {
+            g_debugCurrentPointIndex = tempIndex;
+        }
+
+        ImGui::Separator();
+
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.7f, 0.3f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3f, 0.8f, 0.4f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.1f, 0.6f, 0.2f, 1.0f));
+
+        // "Go To Point"按钮 - 移动刀具到当前点
+        if (ImGui::Button("Go To This Point")) {
+            // 移动刀具到当前点
+            actorManager.cutterActor->SetPosition(currentPoint.x, currentPoint.y, currentPoint.z);
+        }
+
+        ImGui::PopStyleColor(3);
+
+        if (ImGui::Button("Close")) {
+            g_showDebugWindow = false;
+        }
+    }
+    ImGui::End();
 }
 
 }  // namespace ocl

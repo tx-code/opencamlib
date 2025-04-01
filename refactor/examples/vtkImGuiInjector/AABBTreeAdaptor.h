@@ -188,6 +188,7 @@ public:
     }
 
     /// search for overlap with a MillingCutter c positioned at cl, return found objects
+    // 有没有可能需要考虑实际Cutter的形状？这里只是用包围盒去查询
     template<typename CutterType>
     [[nodiscard]] QueryResult search_cutter_overlap(const CutterType* c, const CLPoint* cl)
     {

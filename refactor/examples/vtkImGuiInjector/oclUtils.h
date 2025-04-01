@@ -8,7 +8,9 @@
 #include <vector>
 
 
+#include "vtkActorManager.h"
 #include "vtkUtils.h"
+
 
 // OCL Stuff
 #include "algo/adaptivewaterline.hpp"
@@ -32,6 +34,24 @@ struct CAMModelManager
     std::unique_ptr<ocl::MillingCutter> cutter;
     std::unique_ptr<ocl::Operation> operation;
     std::string stlFilePath;  // 当前打开的STL文件路径
+
+    // 缓存的AABBTree，避免重复构建
+    std::unique_ptr<ocl::AABBTreeAdaptor> aabbTree;
+
+    // 重建AABB树
+    void rebuildAABBTree()
+    {
+        if (surface && !surface->tris.empty()) {
+            if (!aabbTree) {
+                aabbTree = std::make_unique<ocl::AABBTreeAdaptor>();
+            }
+            aabbTree->build(surface->tris);
+            spdlog::info("AABBTree rebuilt with {} triangles", surface->tris.size());
+        }
+        else {
+            aabbTree.reset();
+        }
+    }
 };
 
 void hello_ocl();
@@ -59,9 +79,17 @@ void adaptiveWaterline(CAMModelManager& model,
 
 void pathDropCutter(CAMModelManager& model, vtkActorManager& actorManager, double sampling);
 
-void randomBatchDropCutter(CAMModelManager& model, vtkActorManager& actorManager, double sampling, int randomPoints );
+void randomBatchDropCutter(CAMModelManager& model,
+                           vtkActorManager& actorManager,
+                           double sampling,
+                           int randomPoints);
 
 void adaptivePathDropCutter(CAMModelManager& model,
                             vtkActorManager& actorManager,
                             double sampling,
                             double minSampling);
+
+// Debug the DropCutter from a single input CLPoint
+// Return the result of the DropCutter as a vector of CLPoints
+// And you can visualize the result by updating the actor's position step by step
+std::vector<ocl::CLPoint> debugPointDropCutter(CAMModelManager& model, const ocl::CLPoint& inputCL);
