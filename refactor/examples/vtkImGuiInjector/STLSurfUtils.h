@@ -24,3 +24,6 @@ void SampleMeshForPointCloud(const ocl::STLSurf& surf,
                              const int number_points,
                              Eigen::MatrixXd& P,
                              Eigen::MatrixXd& N);
+
+// Use CGAL to read a polygon mesh from a file, not just STL file, but also other file formats
+void ReadPolygonMesh(const std::string& filename, ocl::STLSurf& surf);

@@ -8,7 +8,8 @@
 #include <nfd.h>
 #include <spdlog/spdlog.h>
 
-namespace ocl {
+namespace ocl
+{
 
 std::wstring DialogHelpers::ToWString(const char* str)
 {
@@ -28,12 +29,12 @@ void DialogHelpers::HelpMarker(const char* desc)
     }
 }
 
-bool DialogHelpers::OpenSTLFileDialog(std::string& outFilePath)
+bool DialogHelpers::OpenWorkpieceFileDialog(std::string& outFilePath)
 {
     NFD_Init();
 
     nfdu8char_t* outPath = nullptr;
-    nfdu8filteritem_t filters[1] = {{"STL Models", "stl"}};
+    nfdu8filteritem_t filters[1] = {{"Mesh Models", "stl,ply,obj,off"}};
     nfdopendialogu8args_t args = {0};
     args.filterList = filters;
     args.filterCount = 1;
@@ -58,4 +59,4 @@ bool DialogHelpers::OpenSTLFileDialog(std::string& outFilePath)
     return success;
 }
 
-} // namespace ocl 
+}  // namespace ocl

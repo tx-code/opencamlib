@@ -12,10 +12,11 @@
 #include <vtkRenderWindow.h>
 #include <vtkRenderWindowInteractor.h>
 
+#include "DialogHelpers.h"
 #include "RecentFilesManager.h"
 #include "SettingsManager.h"
 #include "UIComponents.h"
-#include "DialogHelpers.h"
+
 
 void OverlayUI::setup(vtkObject* caller, unsigned long, void*, void* callData)
 {

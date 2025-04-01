@@ -39,12 +39,11 @@ void UIComponents::DrawLoadStlUI(vtkDearImGuiInjector* injector)
     auto& modelManager = injector->ModelManager;
     auto& actorManager = injector->ActorManager;
 
-    if (ImGui::Button("Load STL")) {
+    if (ImGui::Button("Load Workpiece")) {
         std::string filePath;
-        if (DialogHelpers::OpenSTLFileDialog(filePath)) {
+        if (DialogHelpers::OpenWorkpieceFileDialog(filePath)) {
             modelManager.surface = std::make_unique<ocl::STLSurf>();
-            ocl::STLReader reader(DialogHelpers::ToWString(filePath.c_str()),
-                                  *modelManager.surface);
+            ReadPolygonMesh(filePath, *modelManager.surface);
             UpdateStlSurfActor(actorManager.modelActor, *modelManager.surface);
             injector->ForceResetCamera();
 
@@ -73,8 +72,7 @@ void UIComponents::DrawLoadStlUI(vtkDearImGuiInjector* injector)
                 if (ImGui::MenuItem(filePath.c_str())) {
                     // 加载选择的文件
                     modelManager.surface = std::make_unique<ocl::STLSurf>();
-                    ocl::STLReader reader(DialogHelpers::ToWString(filePath.c_str()),
-                                          *modelManager.surface);
+                    ReadPolygonMesh(filePath, *modelManager.surface);
                     UpdateStlSurfActor(actorManager.modelActor, *modelManager.surface);
                     injector->ForceResetCamera();
 
@@ -374,74 +372,77 @@ void UIComponents::DrawDataModelUI(vtkDearImGuiInjector* injector)
                 model->GetProperty()->SetOpacity(1 - trans);
             }
 
-            // Random Perturbation
-            static double max_move_distance = 0.01;
-            ImGui::InputDouble("Max Move Distance", &max_move_distance, 0.01f, 1.0f, "%.3f");
-            if (ImGui::Button("Random Perturbation")) {
-                RandomPerturbation(*modelManager.surface, max_move_distance, true);
-                UpdateStlSurfActor(actorManager.modelActor, *modelManager.surface);
-                // 重建AABBTree
-                modelManager.rebuildAABBTree();
-            }
+            if (ImGui::BeginMenu("Advanced")) {
+                // Random Perturbation
+                static double max_move_distance = 0.01;
+                ImGui::InputDouble("Max Move Distance", &max_move_distance, 0.01f, 1.0f, "%.3f");
+                if (ImGui::Button("Random Perturbation")) {
+                    RandomPerturbation(*modelManager.surface, max_move_distance, true);
+                    UpdateStlSurfActor(actorManager.modelActor, *modelManager.surface);
+                    // 重建AABBTree
+                    modelManager.rebuildAABBTree();
+                }
 
-            if (ImGui::Button("Subdivision once")) {
-                SubdivideSurface(*modelManager.surface);
-                UpdateStlSurfActor(actorManager.modelActor, *modelManager.surface);
-                // 重建AABBTree
-                modelManager.rebuildAABBTree();
-            }
-            static int treeType = 0;
-            static bool showTree = false;
-            static bool onlyLeafNodes = false;
-            bool updateTree = false;
-            updateTree |= ImGui::Checkbox("Show Tree", &showTree);
-            ImGui::SameLine();
-            updateTree |= ImGui::Checkbox("Only leaf nodes", &onlyLeafNodes);
-            updateTree |= ImGui::RadioButton("KDTree", &treeType, 0);
-            ImGui::SameLine();
-            updateTree |= ImGui::RadioButton("AABBTree", &treeType, 1);
-            if (showTree && updateTree) {
-                // Although we can cache the tree, we rebuild it here for the sake of simplicity and
-                // test memory usage
-                if (treeType == 0) {
-                    auto memory_before = CGAL::Memory_sizer().virtual_size();
-                    ocl::KDTree<ocl::Triangle> kdtree;
-                    kdtree.setBucketSize(1);
-                    kdtree.setXYDimensions();
-                    kdtree.build(modelManager.surface->tris);
-                    spdlog::info("KDTree allocated {} MB",
-                                 (CGAL::Memory_sizer().virtual_size() - memory_before) >> 20);
-                    actorManager.treeActor->VisibilityOn();
-                    UpdateKDTreeActor(actorManager.treeActor, &kdtree, 0.4, onlyLeafNodes);
+                if (ImGui::Button("Subdivision once")) {
+                    SubdivideSurface(*modelManager.surface);
+                    UpdateStlSurfActor(actorManager.modelActor, *modelManager.surface);
+                    // 重建AABBTree
+                    modelManager.rebuildAABBTree();
                 }
-                else {
-                    auto memory_before = CGAL::Memory_sizer().virtual_size();
-                    ocl::AABBTreeAdaptor aabbTree;
-                    aabbTree.build(modelManager.surface->tris);
-                    spdlog::info("AABBTree allocated {} MB",
-                                 (CGAL::Memory_sizer().virtual_size() - memory_before) >> 20);
-                    actorManager.treeActor->VisibilityOn();
-                    UpdateAABBTreeActor(actorManager.treeActor, aabbTree, 0.4);
+                static int treeType = 0;
+                static bool showTree = false;
+                static bool onlyLeafNodes = false;
+                bool updateTree = false;
+                updateTree |= ImGui::Checkbox("Show Tree", &showTree);
+                ImGui::SameLine();
+                updateTree |= ImGui::Checkbox("Only leaf nodes", &onlyLeafNodes);
+                updateTree |= ImGui::RadioButton("KDTree", &treeType, 0);
+                ImGui::SameLine();
+                updateTree |= ImGui::RadioButton("AABBTree", &treeType, 1);
+                if (showTree && updateTree) {
+                    // Although we can cache the tree, we rebuild it here for the sake of simplicity
+                    // and test memory usage
+                    if (treeType == 0) {
+                        auto memory_before = CGAL::Memory_sizer().virtual_size();
+                        ocl::KDTree<ocl::Triangle> kdtree;
+                        kdtree.setBucketSize(1);
+                        kdtree.setXYDimensions();
+                        kdtree.build(modelManager.surface->tris);
+                        spdlog::info("KDTree allocated {} MB",
+                                     (CGAL::Memory_sizer().virtual_size() - memory_before) >> 20);
+                        actorManager.treeActor->VisibilityOn();
+                        UpdateKDTreeActor(actorManager.treeActor, &kdtree, 0.4, onlyLeafNodes);
+                    }
+                    else {
+                        auto memory_before = CGAL::Memory_sizer().virtual_size();
+                        ocl::AABBTreeAdaptor aabbTree;
+                        aabbTree.build(modelManager.surface->tris);
+                        spdlog::info("AABBTree allocated {} MB",
+                                     (CGAL::Memory_sizer().virtual_size() - memory_before) >> 20);
+                        actorManager.treeActor->VisibilityOn();
+                        UpdateAABBTreeActor(actorManager.treeActor, aabbTree, 0.4);
+                    }
                 }
-            }
-            else if (!showTree && updateTree) {
-                actorManager.treeActor->VisibilityOff();
-            }
+                else if (!showTree && updateTree) {
+                    actorManager.treeActor->VisibilityOff();
+                }
 
-            static bool showSamplePoints = false;
-            static int number_points = 1e4;
-            ImGui::DragInt("Number of Sample Points", &number_points, 10.f, 100, 1e7);
-            if (ImGui::Checkbox("Show Sample Points", &showSamplePoints)) {
-                if (showSamplePoints) {
-                    Eigen::MatrixXd P;
-                    Eigen::MatrixXd N;
-                    SampleMeshForPointCloud(*modelManager.surface, number_points, P, N);
-                    UpdatePointCloudActor(actorManager.debugActor, P, N);
-                    actorManager.debugActor->VisibilityOn();
+                static bool showSamplePoints = false;
+                static int number_points = 1e4;
+                ImGui::DragInt("Number of Sample Points", &number_points, 10.f, 100, 1e7);
+                if (ImGui::Checkbox("Show Sample Points", &showSamplePoints)) {
+                    if (showSamplePoints) {
+                        Eigen::MatrixXd P;
+                        Eigen::MatrixXd N;
+                        SampleMeshForPointCloud(*modelManager.surface, number_points, P, N);
+                        UpdatePointCloudActor(actorManager.debugActor, P, N);
+                        actorManager.debugActor->VisibilityOn();
+                    }
+                    else {
+                        actorManager.debugActor->VisibilityOff();
+                    }
                 }
-                else {
-                    actorManager.debugActor->VisibilityOff();
-                }
+                ImGui::EndMenu();
             }
         }
         else {

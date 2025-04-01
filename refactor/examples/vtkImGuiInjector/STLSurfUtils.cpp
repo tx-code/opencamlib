@@ -1,5 +1,6 @@
 ﻿#include "STLSurfUtils.h"
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
+#include <CGAL/Polygon_mesh_processing/IO/polygon_mesh_io.h>
 #include <CGAL/Polygon_mesh_processing/random_perturbation.h>
 #include <CGAL/Surface_mesh.h>
 #include <igl/per_face_normals.h>
@@ -15,6 +16,7 @@
 
 using K = CGAL::Exact_predicates_inexact_constructions_kernel;
 using SurfaceMesh = CGAL::Surface_mesh<K::Point_3>;
+namespace PMP = CGAL::Polygon_mesh_processing;
 
 namespace
 {
@@ -166,4 +168,30 @@ void SampleMeshForPointCloud(const ocl::STLSurf& surf,
     for (int i = 0; i < P.rows(); i++) {
         N.row(i) = FN.row(I(i));
     }
+}
+
+void ReadPolygonMesh(const std::string& filename, ocl::STLSurf& surf)
+{
+    SurfaceMesh mesh;
+    if (!PMP::IO::read_polygon_mesh(filename, mesh)) {
+        spdlog::error("Failed to read polygon mesh from {}", filename);
+        return;
+    }
+
+    surf.tris.clear();
+    assert(CGAL::is_triangle_mesh(mesh));
+    for (auto f : mesh.faces()) {
+        auto h = mesh.halfedge(f);
+        auto v0 = mesh.source(h);
+        const auto& p0 = mesh.point(v0);
+        auto v1 = mesh.target(h);
+        const auto& p1 = mesh.point(v1);
+        auto v2 = mesh.target(mesh.next(h));
+        const auto& p2 = mesh.point(v2);
+        surf.addTriangle(ocl::Triangle(ocl::Point(p0[0], p0[1], p0[2]),
+                                       ocl::Point(p1[0], p1[1], p1[2]),
+                                       ocl::Point(p2[0], p2[1], p2[2])));
+    }
+
+    spdlog::info("Loaded {} triangles from {}", surf.size(), filename);
 }
