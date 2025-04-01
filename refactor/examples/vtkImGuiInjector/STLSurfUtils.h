@@ -18,3 +18,9 @@ void CreateVoxelGrid(const ocl::STLSurf& surf,
                      const int pad_count,
                      Eigen::MatrixXd& GV,
                      Eigen::RowVector3i& res);
+
+// Sample the surface mesh for a point cloud (basic version from libigl)
+void SampleMeshForPointCloud(const ocl::STLSurf& surf,
+                             const int number_points,
+                             Eigen::MatrixXd& P,
+                             Eigen::MatrixXd& N);

@@ -400,3 +400,10 @@ void UpdateOverlappedTrianglesActor(vtkSmartPointer<vtkActor>& actor,
                                     const std::vector<ocl::Triangle>& triangles,
                                     const double color[3] = red,
                                     double opacity = 0.7);
+
+// 可视化点云
+void UpdatePointCloudActor(vtkSmartPointer<vtkActor>& actor,
+                           const Eigen::MatrixXd& points,
+                           const Eigen::MatrixXd& normals,
+                           const double color[3] = red,
+                           double opacity = 0.7);

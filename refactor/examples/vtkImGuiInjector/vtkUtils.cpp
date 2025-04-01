@@ -6,6 +6,7 @@
 #include <vtkAppendPolyData.h>
 #include <vtkSignedDistance.h>
 
+
 // 空的命名空间，已经移除所有cutter相关的实现
 namespace
 {
@@ -710,4 +711,32 @@ void UpdateOverlappedTrianglesActor(vtkSmartPointer<vtkActor>& actor,
     actor->SetPosition(0, 0, 0.01);  // 略微向观察者方向移动
 
     actor->SetObjectName(fmt::format("Overlapped Triangles(N={})", triangles.size()));
+}
+
+void UpdatePointCloudActor(vtkSmartPointer<vtkActor>& actor,
+                           const Eigen::MatrixXd& points,
+                           const Eigen::MatrixXd& normals,
+                           const double color[3],
+                           double opacity)
+{
+    assert(actor);
+    vtkNew<vtkPoints> points_;
+    for (int i = 0; i < points.rows(); i++) {
+        points_->InsertNextPoint(points(i, 0), points(i, 1), points(i, 2));
+    }
+
+    vtkNew<vtkPolyData> polyData;
+    polyData->SetPoints(points_);
+
+    vtkNew<vtkVertexGlyphFilter> vertexFilter;
+    vertexFilter->SetInputData(polyData);
+    vertexFilter->Update();
+
+    vtkNew<vtkPolyDataMapper> mapper;
+    mapper->SetInputData(vertexFilter->GetOutput());
+
+    actor->SetMapper(mapper);
+    SetActorColor(actor, color);
+    SetActorOpacity(actor, opacity);
+    actor->GetProperty()->SetPointSize(3);
 }

@@ -427,6 +427,22 @@ void UIComponents::DrawDataModelUI(vtkDearImGuiInjector* injector)
             else if (!showTree && updateTree) {
                 actorManager.treeActor->VisibilityOff();
             }
+
+            static bool showSamplePoints = false;
+            static int number_points = 1e4;
+            ImGui::DragInt("Number of Sample Points", &number_points, 10.f, 100, 1e7);
+            if (ImGui::Checkbox("Show Sample Points", &showSamplePoints)) {
+                if (showSamplePoints) {
+                    Eigen::MatrixXd P;
+                    Eigen::MatrixXd N;
+                    SampleMeshForPointCloud(*modelManager.surface, number_points, P, N);
+                    UpdatePointCloudActor(actorManager.debugActor, P, N);
+                    actorManager.debugActor->VisibilityOn();
+                }
+                else {
+                    actorManager.debugActor->VisibilityOff();
+                }
+            }
         }
         else {
             ImGui::TextDisabled("No WorkPiece");

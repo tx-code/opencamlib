@@ -2,10 +2,13 @@
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
 #include <CGAL/Polygon_mesh_processing/random_perturbation.h>
 #include <CGAL/Surface_mesh.h>
+#include <igl/per_face_normals.h>
+#include <igl/random_points_on_mesh.h>
 #include <igl/remove_duplicate_vertices.h>
 #include <igl/upsample.h>
 #include <igl/voxel_grid.h>
 #include <spdlog/spdlog.h>
+
 
 #include "geo/point.hpp"
 #include "geo/triangle.hpp"
@@ -142,5 +145,25 @@ void SubdivideSurface(ocl::STLSurf& surf, int level)
         surf.addTriangle(ocl::Triangle(ocl::Point(VF_0[0], VF_0[1], VF_0[2]),
                                        ocl::Point(VF_1[0], VF_1[1], VF_1[2]),
                                        ocl::Point(VF_2[0], VF_2[1], VF_2[2])));
+    }
+}
+
+void SampleMeshForPointCloud(const ocl::STLSurf& surf,
+                             const int number_points,
+                             Eigen::MatrixXd& P,
+                             Eigen::MatrixXd& N)
+{
+    Eigen::MatrixXd V;
+    Eigen::MatrixXi F;
+    ExtractVF(surf, V, F);
+
+    Eigen::VectorXi I;
+    Eigen::MatrixXd B;
+    igl::random_points_on_mesh(number_points, V, F, B, I, P);
+    Eigen::MatrixXd FN;
+    igl::per_face_normals(V, F, FN);
+    N.resize(P.rows(), 3);
+    for (int i = 0; i < P.rows(); i++) {
+        N.row(i) = FN.row(I(i));
     }
 }
