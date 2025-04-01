@@ -2,6 +2,8 @@
 
 // 添加随机数生成器相关头文件
 #include <functional>
+#include <tbb/global_control.h>
+#include <tbb/info.h>
 #include <random>
 
 
@@ -239,8 +241,18 @@ void adaptivePathDropCutter(CAMModelManager& model,
 
 void hello_ocl()
 {
+    spdlog::info("=============================");
     spdlog::info("ocl version: {}", ocl::version());
     spdlog::info("max threads: {}", ocl::max_threads());
+
+    spdlog::info("===== TBB Global Control info =====");
+    int max_parallelism = tbb::global_control::active_value(tbb::global_control::max_allowed_parallelism);
+    spdlog::info("max parallelism: {}", max_parallelism);
+
+    size_t stack_size = tbb::global_control::active_value(tbb::global_control::thread_stack_size);
+    spdlog::info("thread stack size: {} bytes", stack_size);
+
+    spdlog::info("=============================");
 }
 
 std::vector<ocl::CLPoint> debugPointDropCutter(CAMModelManager& model, const ocl::CLPoint& inputCL)

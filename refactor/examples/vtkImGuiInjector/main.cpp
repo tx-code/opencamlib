@@ -30,6 +30,7 @@
 //------------------------------------------------------------------------------
 int main(int argc, char* argv[])
 {
+    hello_ocl();
     // Create a renderer, render window, and interactor
     vtkNew<vtkRenderer> renderer;
     vtkNew<vtkRenderWindow> renderWindow;
