@@ -26,60 +26,80 @@
 #include "geo/point.hpp"
 #include "interval.hpp"
 
-namespace ocl {
+namespace ocl
+{
 
 /// a fiber is an infinite line in space along which the cutter can be pushed
 /// into contact with a triangle. A Weave is built from many X-fibers and
 /// Y-fibers. might be called a Dexel also in some papers/textbooks.
-class OCL_API Fiber {
+class OCL_API Fiber
+{
 public:
-  Fiber() { ints.clear(); }
-  /// create a Fiber between points p1 and p2
-  Fiber(const Point &p1, const Point &p2);
-  virtual ~Fiber() {}
-  /// add an interval to this Fiber
-  void addInterval(Interval &i);
-  /// return true if Fiber already has interval i in it
-  bool contains(Interval &i) const;
-  /// return true if Interval i is completely missing (no overlaps) from Fiber
-  bool missing(Interval &i) const;
+    Fiber()
+    {
+        ints.clear();
+    }
+    /// create a Fiber between points p1 and p2
+    Fiber(const Point& p1, const Point& p2);
+    virtual ~Fiber()
+    {}
+    /// add an interval to this Fiber
+    void addInterval(Interval& i);
+    /// return true if Fiber already has interval i in it
+    bool contains(Interval& i) const;
+    /// return true if Interval i is completely missing (no overlaps) from Fiber
+    bool missing(Interval& i) const;
 
-  /// t-value corresponding to Point p
-  double tval(Point &p) const;
-  /// Point corresponding to t-value
-  Point point(double t) const;
-  /// print the intervals
-  void printInts() const;
-  /// return true if the Fiber contains no intervals
-  bool empty() const { return ints.empty(); }
-  /// return number of intervals
-  unsigned int size() const { return static_cast<unsigned int>(ints.size()); }
+    /// t-value corresponding to Point p
+    double tval(Point& p) const;
+    /// Point corresponding to t-value
+    Point point(double t) const;
+    /// print the intervals
+    void printInts() const;
+    /// return true if the Fiber contains no intervals
+    bool empty() const
+    {
+        return ints.empty();
+    }
+    /// return number of intervals
+    unsigned int size() const
+    {
+        return static_cast<unsigned int>(ints.size());
+    }
 
-  /// return the upper cl-point of interval n
-  Point upperCLPoint(unsigned int n) const { return point(ints[n].upper); }
-  /// return the lower cl-point of interval n
-  Point lowerCLPoint(unsigned int n) const { return point(ints[n].lower); }
+    /// return the upper cl-point of interval n
+    Point upperCLPoint(unsigned int n) const
+    {
+        return point(ints[n].upper);
+    }
+    /// return the lower cl-point of interval n
+    Point lowerCLPoint(unsigned int n) const
+    {
+        return point(ints[n].lower);
+    }
 
-  /// string repr
-  friend std::ostream &operator<<(std::ostream &stream, const Fiber &f);
+    /// string repr
+    friend std::ostream& operator<<(std::ostream& stream, const Fiber& f);
+    std::string str() const;
 
-  bool operator==(const Fiber &other) const {
-    if ((this->p1 == other.p1) && (this->p2 == other.p2))
-      return true;
-    else
-      return false;
-  }
+    bool operator==(const Fiber& other) const
+    {
+        if ((this->p1 == other.p1) && (this->p2 == other.p2))
+            return true;
+        else
+            return false;
+    }
 
-  // DATA
-  Point p1;                   ///< start point
-  Point p2;                   ///< end point
-  Point dir;                  ///< direction vector (normalized)
-  std::vector<Interval> ints; ///< the intervals in this Fiber
+    // DATA
+    Point p1;                    ///< start point
+    Point p2;                    ///< end point
+    Point dir;                   ///< direction vector (normalized)
+    std::vector<Interval> ints;  ///< the intervals in this Fiber
 protected:
-  /// set the direction(tangent) vector
-  void calcDir();
+    /// set the direction(tangent) vector
+    void calcDir();
 };
 
-} // namespace ocl
+}  // namespace ocl
 #endif
 // end file fiber.h

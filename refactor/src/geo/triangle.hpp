@@ -26,51 +26,55 @@
 #include "bbox.hpp"
 #include "point.hpp"
 
-namespace ocl {
+namespace ocl
+{
 
 ///
 /// \brief a Triangle defined by its three vertices
 ///
-class OCL_API Triangle {
+class OCL_API Triangle
+{
 public:
-  /// default constructor
-  Triangle();
-  /// copy constructor
-  Triangle(const Triangle &t);
+    /// default constructor
+    Triangle();
+    /// copy constructor
+    Triangle(const Triangle& t);
 
-  /// destructor
-  virtual ~Triangle() {}
-  /// Create a triangle with the vertices p1, p2, and p3.
-  Triangle(Point p1, Point p2, Point p3);
+    /// destructor
+    virtual ~Triangle()
+    {}
+    /// Create a triangle with the vertices p1, p2, and p3.
+    Triangle(Point p1, Point p2, Point p3);
 
-  /// return true if Triangle is sliced by a z-plane at z=zcut
-  /// modify p1 and p2 so that they are intersections of the triangle edges
-  /// and the plane. These vertices are used by CylCutter::edgePush()
-  bool zslice_verts(Point &p1, Point &p2, double zcut) const;
+    /// return true if Triangle is sliced by a z-plane at z=zcut
+    /// modify p1 and p2 so that they are intersections of the triangle edges
+    /// and the plane. These vertices are used by CylCutter::edgePush()
+    bool zslice_verts(Point& p1, Point& p2, double zcut) const;
 
-  /// rotate triangle xrot radians around X-axis, yrot radians around Y-axis
-  /// and zrot radians around Z-axis
-  void rotate(double xrot, double yrot, double zrot);
+    /// rotate triangle xrot radians around X-axis, yrot radians around Y-axis
+    /// and zrot radians around Z-axis
+    void rotate(double xrot, double yrot, double zrot);
 
-  /// Triangle string repr
-  friend std::ostream &operator<<(std::ostream &stream, const Triangle t);
+    /// Triangle string repr
+    friend std::ostream& operator<<(std::ostream& stream, const Triangle t);
+    std::string str() const;
 
-  /// the three vertex Points of the Triangle
-  Point p[3]; // vertices
-  /// normal vector
-  Point n;
-  /// return normal vector with positive z-coordinate
-  Point upNormal() const;
-  /// bounding-box
-  Bbox bb;
+    /// the three vertex Points of the Triangle
+    Point p[3];  // vertices
+    /// normal vector
+    Point n;
+    /// return normal vector with positive z-coordinate
+    Point upNormal() const;
+    /// bounding-box
+    Bbox bb;
 
 protected:
-  /// calculate and set Triangle normal
-  void calcNormal();
-  /// update bounding-box
-  void calcBB();
+    /// calculate and set Triangle normal
+    void calcNormal();
+    /// update bounding-box
+    void calcBB();
 };
 
-} // namespace ocl
+}  // namespace ocl
 #endif
 // end file triangle.h
