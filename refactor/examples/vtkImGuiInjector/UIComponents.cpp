@@ -32,7 +32,9 @@ static vtkSmartPointer<CutterTimerCallback> g_cutterCallback;
 // 用于Debug DropCutter的静态变量
 static std::vector<ocl::CLPoint> g_debugResultPoints;
 static int g_debugCurrentPointIndex = 0;
-static bool g_showDebugWindow = false;  // 控制调试窗口显示
+static bool g_showDebugWindow = false;      // 控制调试窗口显示
+static bool g_showCutterWindow = false;     // 控制刀具窗口显示
+static bool g_showOperationWindow = false;  // 控制操作窗口显示
 
 void UIComponents::DrawLoadStlUI(vtkDearImGuiInjector* injector)
 {
@@ -96,222 +98,249 @@ void UIComponents::DrawLoadStlUI(vtkDearImGuiInjector* injector)
     }
 }
 
+// 独立显示的窗口
 void UIComponents::DrawCutterUI(vtkDearImGuiInjector* injector)
 {
     auto& modelManager = injector->ModelManager;
     auto& actorManager = injector->ActorManager;
 
-    if (ImGui::Button("Add Cutter")) {
-        ImGui::OpenPopup("###Add Cutter");
-    }
+    // 刀具窗口
+    if (g_showCutterWindow) {
+        ImGui::SetNextWindowSize(ImVec2(400, 350), ImGuiCond_FirstUseEver);
 
-    // 添加刀具的弹出菜单
-    if (ImGui::BeginPopup("###Add Cutter", ImGuiWindowFlags_AlwaysAutoResize)) {
-        static const char* cutter_types[] = {"CylCutter", "BallCutter", "BullCutter", "ConeCutter"};
+        // 使用固定位置的窗口，靠近屏幕左侧
+        ImVec2 viewportSize = ImGui::GetMainViewport()->Size;
+        ImVec2 windowPos(20, 100);
+        ImGui::SetNextWindowPos(windowPos, ImGuiCond_FirstUseEver);
 
-        // 使用全局设置
-        auto& settings = SettingsManager::GetSettings();
-        bool changed = false;
+        if (ImGui::Begin("Add Cutter", &g_showCutterWindow, ImGuiWindowFlags_AlwaysAutoResize)) {
+            static const char* cutter_types[] = {"CylCutter",
+                                                 "BallCutter",
+                                                 "BullCutter",
+                                                 "ConeCutter"};
 
-        changed |= ImGui::Combo("Cutter Types",
-                                &settings.cutter_type_index,
-                                cutter_types,
-                                IM_ARRAYSIZE(cutter_types));
+            // 使用全局设置
+            auto& settings = SettingsManager::GetSettings();
+            bool changed = false;
 
-        using namespace boost::math::constants;
+            changed |= ImGui::Combo("Cutter Types",
+                                    &settings.cutter_type_index,
+                                    cutter_types,
+                                    IM_ARRAYSIZE(cutter_types));
 
-        if (settings.cutter_type_index == 0) {
-            changed |= ImGui::InputDouble("Diameter", &settings.diameter, 0.01f, 1.0f, "%.3f");
-            changed |= ImGui::InputDouble("Length", &settings.length, 0.01f, 1.0f, "%.3f");
-        }
-        else if (settings.cutter_type_index == 1) {
-            changed |= ImGui::InputDouble("Diameter", &settings.diameter, 0.01f, 1.0f, "%.3f");
-            changed |= ImGui::InputDouble("Length", &settings.length, 0.01f, 1.0f, "%.3f");
-        }
-        else if (settings.cutter_type_index == 2) {
-            changed |= ImGui::InputDouble("Diameter", &settings.diameter, 0.01f, 1.0f, "%.3f");
-            changed |= ImGui::InputDouble("Length", &settings.length, 0.01f, 1.0f, "%.3f");
-            changed |= ImGui::InputDouble("Radius", &settings.radius, 0.01f, 1.0f, "%.3f");
-        }
-        else if (settings.cutter_type_index == 3) {
-            changed |= ImGui::InputDouble("Diameter", &settings.diameter, 0.01f, 1.0f, "%.3f");
-            changed |= ImGui::InputDouble("Length", &settings.length, 0.01f, 1.0f, "%.3f");
-            changed |= ImGui::InputDouble("Angle", &settings.angle_in_deg, 0.01f, 1.0f, "%.3f");
-        }
+            using namespace boost::math::constants;
 
-        // 如果有变化，保存设置
-        if (changed) {
-            SettingsManager::SaveSettings();
-        }
-
-        if (ImGui::Button("Ok")) {
-            // 根据cutter_type_index创建相应类型的刀具
             if (settings.cutter_type_index == 0) {
-                modelManager.cutter =
-                    std::make_unique<ocl::CylCutter>(settings.diameter, settings.length);
-                spdlog::info("CylCutter created: {}", modelManager.cutter->str());
+                changed |= ImGui::InputDouble("Diameter", &settings.diameter, 0.01f, 1.0f, "%.3f");
+                changed |= ImGui::InputDouble("Length", &settings.length, 0.01f, 1.0f, "%.3f");
             }
             else if (settings.cutter_type_index == 1) {
-                modelManager.cutter =
-                    std::make_unique<ocl::BallCutter>(settings.diameter, settings.length);
-                spdlog::info("BallCutter created: {}", modelManager.cutter->str());
+                changed |= ImGui::InputDouble("Diameter", &settings.diameter, 0.01f, 1.0f, "%.3f");
+                changed |= ImGui::InputDouble("Length", &settings.length, 0.01f, 1.0f, "%.3f");
             }
             else if (settings.cutter_type_index == 2) {
-                modelManager.cutter = std::make_unique<ocl::BullCutter>(settings.diameter,
-                                                                        settings.radius,
-                                                                        settings.length);
-                spdlog::info("BullCutter created: {}", modelManager.cutter->str());
+                changed |= ImGui::InputDouble("Diameter", &settings.diameter, 0.01f, 1.0f, "%.3f");
+                changed |= ImGui::InputDouble("Length", &settings.length, 0.01f, 1.0f, "%.3f");
+                changed |= ImGui::InputDouble("Radius", &settings.radius, 0.01f, 1.0f, "%.3f");
             }
             else if (settings.cutter_type_index == 3) {
-                modelManager.cutter =
-                    std::make_unique<ocl::ConeCutter>(settings.diameter,
-                                                      degree<double>() * settings.angle_in_deg,
-                                                      settings.length);
-                spdlog::info("ConeCutter created: {}", modelManager.cutter->str());
+                changed |= ImGui::InputDouble("Diameter", &settings.diameter, 0.01f, 1.0f, "%.3f");
+                changed |= ImGui::InputDouble("Length", &settings.length, 0.01f, 1.0f, "%.3f");
+                changed |= ImGui::InputDouble("Angle", &settings.angle_in_deg, 0.01f, 1.0f, "%.3f");
             }
-            UpdateCutterActor(actorManager.cutterActor, *modelManager.cutter, ocl::Point(0, 0, 0));
-            injector->ForceResetCamera();
 
-            // 隐藏重叠三角形actor
-            actorManager.debugActor->VisibilityOff();
-        }
+            // 如果有变化，保存设置
+            if (changed) {
+                SettingsManager::SaveSettings();
+            }
 
-        ImGui::SameLine();
-        if (ImGui::Button("Cancel")) {
-            ImGui::CloseCurrentPopup();
+            if (ImGui::Button("Ok")) {
+                // 根据cutter_type_index创建相应类型的刀具
+                if (settings.cutter_type_index == 0) {
+                    modelManager.cutter =
+                        std::make_unique<ocl::CylCutter>(settings.diameter, settings.length);
+                    spdlog::info("CylCutter created: {}", modelManager.cutter->str());
+                }
+                else if (settings.cutter_type_index == 1) {
+                    modelManager.cutter =
+                        std::make_unique<ocl::BallCutter>(settings.diameter, settings.length);
+                    spdlog::info("BallCutter created: {}", modelManager.cutter->str());
+                }
+                else if (settings.cutter_type_index == 2) {
+                    modelManager.cutter = std::make_unique<ocl::BullCutter>(settings.diameter,
+                                                                            settings.radius,
+                                                                            settings.length);
+                    spdlog::info("BullCutter created: {}", modelManager.cutter->str());
+                }
+                else if (settings.cutter_type_index == 3) {
+                    modelManager.cutter =
+                        std::make_unique<ocl::ConeCutter>(settings.diameter,
+                                                          degree<double>() * settings.angle_in_deg,
+                                                          settings.length);
+                    spdlog::info("ConeCutter created: {}", modelManager.cutter->str());
+                }
+                UpdateCutterActor(actorManager.cutterActor,
+                                  *modelManager.cutter,
+                                  ocl::Point(0, 0, 0));
+                injector->ForceResetCamera();
+
+                // 隐藏重叠三角形actor
+                actorManager.debugActor->VisibilityOff();
+            }
         }
-        ImGui::EndPopup();
+        ImGui::End();
     }
 }
 
+// 独立显示的窗口
 void UIComponents::DrawOperationUI(vtkDearImGuiInjector* injector)
 {
     auto& modelManager = injector->ModelManager;
     auto& actorManager = injector->ActorManager;
 
-    if (ImGui::Button("Add Operation")) {
-        ImGui::OpenPopup("###Add Operation");
-    }
+    // 操作窗口
+    if (g_showOperationWindow) {
+        ImGui::SetNextWindowSize(ImVec2(400, 420), ImGuiCond_FirstUseEver);
 
-    // 添加操作的弹出菜单
-    if (ImGui::BeginPopup("###Add Operation", ImGuiWindowFlags_AlwaysAutoResize)) {
-        static const char* op_types[] = {"WaterLine",
-                                         "AdaptiveWaterLine",
-                                         "PathDropCutter",
-                                         "AdaptivePathDropCutter",
-                                         "RandomBatchDropCutter"};
+        // 使用固定位置的窗口，靠近屏幕左侧
+        ImVec2 viewportSize = ImGui::GetMainViewport()->Size;
+        ImVec2 windowPos(20, 470);
+        ImGui::SetNextWindowPos(windowPos, ImGuiCond_FirstUseEver);
 
-        // 使用全局设置
-        auto& settings = SettingsManager::GetSettings();
-        bool changed = false;
+        if (ImGui::Begin("Add Operation",
+                         &g_showOperationWindow,
+                         ImGuiWindowFlags_AlwaysAutoResize)) {
+            static const char* op_types[] = {"WaterLine",
+                                             "AdaptiveWaterLine",
+                                             "PathDropCutter",
+                                             "AdaptivePathDropCutter",
+                                             "RandomBatchDropCutter"};
 
-        changed |= ImGui::Combo("Operation Types",
-                                &settings.op_type_index,
-                                op_types,
-                                IM_ARRAYSIZE(op_types));
+            // 使用全局设置
+            auto& settings = SettingsManager::GetSettings();
+            bool changed = false;
 
-        switch (settings.op_type_index) {
-            case 0:
-                changed |= ImGui::InputDouble("Sampling", &settings.sampling, 0.01f, 1.0f, "%.3f");
-                changed |=
-                    ImGui::InputDouble("Lift Step", &settings.lift_step, 0.01f, 1.0f, "%.3f");
-                changed |=
-                    ImGui::InputDouble("Lift From", &settings.lift_from, 0.01f, 1.0f, "%.3f");
-                changed |= ImGui::InputDouble("Lift To", &settings.lift_to, 0.01f, 1.0f, "%.3f");
-                break;
-            case 1:
-                changed |= ImGui::InputDouble("Sampling", &settings.sampling, 0.01f, 1.0f, "%.3f");
-                changed |=
-                    ImGui::InputDouble("Min Sampling", &settings.min_sampling, 0.01f, 1.0f, "%.3f");
-                changed |=
-                    ImGui::InputDouble("Lift Step", &settings.lift_step, 0.01f, 1.0f, "%.3f");
-                changed |=
-                    ImGui::InputDouble("Lift From", &settings.lift_from, 0.01f, 1.0f, "%.3f");
-                changed |= ImGui::InputDouble("Lift To", &settings.lift_to, 0.01f, 1.0f, "%.3f");
-                break;
-            case 2:
-                changed |= ImGui::InputDouble("Sampling", &settings.sampling, 0.01f, 1.0f, "%.3f");
-                break;
-            case 3:
-                changed |= ImGui::InputDouble("Sampling", &settings.sampling, 0.01f, 1.0f, "%.3f");
-                changed |=
-                    ImGui::InputDouble("Min Sampling", &settings.min_sampling, 0.01f, 1.0f, "%.3f");
-                break;
-            case 4:
-                changed |= ImGui::InputDouble("Sampling", &settings.sampling, 0.01f, 1.0f, "%.3f");
-                changed |= ImGui::InputInt("Random Points", &settings.random_points, 1000, 10000);
-                break;
-            default:
-                break;
-        }
+            changed |= ImGui::Combo("Operation Types",
+                                    &settings.op_type_index,
+                                    op_types,
+                                    IM_ARRAYSIZE(op_types));
 
-        // 如果有变化，保存设置
-        if (changed) {
-            SettingsManager::SaveSettings();
-        }
+            switch (settings.op_type_index) {
+                case 0:
+                    changed |=
+                        ImGui::InputDouble("Sampling", &settings.sampling, 0.01f, 1.0f, "%.3f");
+                    changed |=
+                        ImGui::InputDouble("Lift Step", &settings.lift_step, 0.01f, 1.0f, "%.3f");
+                    changed |=
+                        ImGui::InputDouble("Lift From", &settings.lift_from, 0.01f, 1.0f, "%.3f");
+                    changed |=
+                        ImGui::InputDouble("Lift To", &settings.lift_to, 0.01f, 1.0f, "%.3f");
+                    break;
+                case 1:
+                    changed |=
+                        ImGui::InputDouble("Sampling", &settings.sampling, 0.01f, 1.0f, "%.3f");
+                    changed |= ImGui::InputDouble("Min Sampling",
+                                                  &settings.min_sampling,
+                                                  0.01f,
+                                                  1.0f,
+                                                  "%.3f");
+                    changed |=
+                        ImGui::InputDouble("Lift Step", &settings.lift_step, 0.01f, 1.0f, "%.3f");
+                    changed |=
+                        ImGui::InputDouble("Lift From", &settings.lift_from, 0.01f, 1.0f, "%.3f");
+                    changed |=
+                        ImGui::InputDouble("Lift To", &settings.lift_to, 0.01f, 1.0f, "%.3f");
+                    break;
+                case 2:
+                    changed |=
+                        ImGui::InputDouble("Sampling", &settings.sampling, 0.01f, 1.0f, "%.3f");
+                    break;
+                case 3:
+                    changed |=
+                        ImGui::InputDouble("Sampling", &settings.sampling, 0.01f, 1.0f, "%.3f");
+                    changed |= ImGui::InputDouble("Min Sampling",
+                                                  &settings.min_sampling,
+                                                  0.01f,
+                                                  1.0f,
+                                                  "%.3f");
+                    break;
+                case 4:
+                    changed |=
+                        ImGui::InputDouble("Sampling", &settings.sampling, 0.01f, 1.0f, "%.3f");
+                    changed |=
+                        ImGui::InputInt("Random Points", &settings.random_points, 1000, 10000);
+                    break;
+                default:
+                    break;
+            }
 
-        if (ImGui::Button("Run Operation")) {
-            if (modelManager.cutter && modelManager.surface) {
-                // 隐藏重叠三角形actor
-                actorManager.debugActor->VisibilityOff();
+            // 如果有变化，保存设置
+            if (changed) {
+                SettingsManager::SaveSettings();
+            }
 
-                switch (settings.op_type_index) {
-                    case 0:
-                        waterline(modelManager,
-                                  actorManager,
-                                  settings.sampling,
-                                  settings.lift_to,
-                                  settings.lift_step,
-                                  settings.lift_from);
-                        break;
-                    case 1:
-                        adaptiveWaterline(modelManager,
-                                          actorManager,
-                                          settings.sampling,
-                                          settings.min_sampling,
-                                          settings.lift_to,
-                                          settings.lift_step,
-                                          settings.lift_from);
-                        break;
-                    case 2:
-                        pathDropCutter(modelManager, actorManager, settings.sampling);
-                        break;
-                    case 3:
-                        adaptivePathDropCutter(modelManager,
-                                               actorManager,
-                                               settings.sampling,
-                                               settings.min_sampling);
-                        break;
-                    case 4:
-                        randomBatchDropCutter(modelManager,
+            if (ImGui::Button("Run Operation")) {
+                if (modelManager.cutter && modelManager.surface) {
+                    // 隐藏重叠三角形actor
+                    actorManager.debugActor->VisibilityOff();
+
+                    switch (settings.op_type_index) {
+                        case 0:
+                            waterline(modelManager,
+                                      actorManager,
+                                      settings.sampling,
+                                      settings.lift_to,
+                                      settings.lift_step,
+                                      settings.lift_from);
+                            break;
+                        case 1:
+                            adaptiveWaterline(modelManager,
                                               actorManager,
                                               settings.sampling,
-                                              settings.random_points);
-                        break;
+                                              settings.min_sampling,
+                                              settings.lift_to,
+                                              settings.lift_step,
+                                              settings.lift_from);
+                            break;
+                        case 2:
+                            pathDropCutter(modelManager, actorManager, settings.sampling);
+                            break;
+                        case 3:
+                            adaptivePathDropCutter(modelManager,
+                                                   actorManager,
+                                                   settings.sampling,
+                                                   settings.min_sampling);
+                            break;
+                        case 4:
+                            randomBatchDropCutter(modelManager,
+                                                  actorManager,
+                                                  settings.sampling,
+                                                  settings.random_points);
+                            break;
+                    }
+                    injector->ForceResetCamera();
                 }
-                injector->ForceResetCamera();
+                else {
+                    spdlog::error("No Cutter or Surface");
+                    ImGui::OpenPopup("No Cutter or Surface");
+                    // 弹出窗口居中显示
+                    auto center = ImGui::GetMainViewport()->GetCenter();
+                    ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+                }
             }
-            else {
-                spdlog::error("No Cutter or Surface");
-                ImGui::OpenPopup("No Cutter or Surface");
-                // 弹出窗口居中显示
-                auto center = ImGui::GetMainViewport()->GetCenter();
-                ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+
+            if (ImGui::BeginPopupModal("No Cutter or Surface",
+                                       nullptr,
+                                       ImGuiWindowFlags_AlwaysAutoResize)) {
+                ImGui::Text("Please select a cutter and a surface");
+                ImGui::SetItemDefaultFocus();
+                if (ImGui::Button("OK", ImVec2(120, 0))) {
+                    ImGui::CloseCurrentPopup();
+                }
+                ImGui::EndPopup();
             }
         }
-
-        if (ImGui::BeginPopupModal("No Cutter or Surface",
-                                   nullptr,
-                                   ImGuiWindowFlags_AlwaysAutoResize)) {
-            ImGui::Text("Please select a cutter and a surface");
-            ImGui::SetItemDefaultFocus();
-            if (ImGui::Button("OK", ImVec2(120, 0))) {
-                ImGui::CloseCurrentPopup();
-            }
-            ImGui::EndPopup();
-        }
-
-        ImGui::EndPopup();
+        ImGui::End();
     }
 }
 
@@ -703,8 +732,8 @@ void UIComponents::DrawCAMExample(vtkDearImGuiInjector* injector)
 
     if (ImGui::BeginMenu("OCL Operations")) {
         DrawLoadStlUI(injector);
-        DrawCutterUI(injector);
-        DrawOperationUI(injector);
+        ImGui::MenuItem("Add Cutter", nullptr, &g_showCutterWindow);
+        ImGui::MenuItem("Add Operation", nullptr, &g_showOperationWindow);
         if (ImGui::BeginMenu("OCL Benchmark")) {
             static bool verbose = true;
             ImGui::Checkbox("Verbose", &verbose);
@@ -749,7 +778,9 @@ void UIComponents::DrawCAMExample(vtkDearImGuiInjector* injector)
     DrawCutterModelUI(injector);
     DrawOperationModelUI(injector);
 
-    // 绘制Debug DropCutter窗口 (在ImGui主窗口外独立显示)
+    // 在ImGui主窗口外独立显示的窗口
+    DrawCutterUI(injector);
+    DrawOperationUI(injector);
     DrawDebugDropCutterWindow(injector);
 }
 
