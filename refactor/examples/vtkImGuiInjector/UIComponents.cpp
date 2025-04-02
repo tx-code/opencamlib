@@ -18,6 +18,7 @@
 #include <imgui.h>
 #include <spdlog/spdlog.h>
 #include <vtkMapper.h>
+#include <vtkPlane.h>
 #include <vtkPoints.h>
 #include <vtkPolyData.h>
 #include <vtkSmartPointer.h>
@@ -225,14 +226,29 @@ void UIComponents::DrawOperationUI(vtkDearImGuiInjector* injector)
                                     op_types,
                                     IM_ARRAYSIZE(op_types));
 
+            if (actorManager.planeWidget->GetEnabled()) {
+                settings.lift_to = actorManager.planeWidget->GetImplicitPlaneRepresentation()
+                                       ->GetUnderlyingPlane()
+                                       ->GetOrigin()[2];
+            }
+
             switch (settings.op_type_index) {
                 case 0:
+                    changed |= ImGui::Checkbox("Single Z Op", &settings.single_z_op);
                     changed |=
                         ImGui::InputDouble("Sampling", &settings.sampling, 0.01f, 1.0f, "%.3f");
-                    changed |=
-                        ImGui::InputDouble("Lift Step", &settings.lift_step, 0.01f, 1.0f, "%.3f");
-                    changed |=
-                        ImGui::InputDouble("Lift From", &settings.lift_from, 0.01f, 1.0f, "%.3f");
+                    if (!settings.single_z_op) {
+                        changed |= ImGui::InputDouble("Lift Step",
+                                                      &settings.lift_step,
+                                                      0.01f,
+                                                      1.0f,
+                                                      "%.3f");
+                        changed |= ImGui::InputDouble("Lift From",
+                                                      &settings.lift_from,
+                                                      0.01f,
+                                                      1.0f,
+                                                      "%.3f");
+                    }
                     changed |=
                         ImGui::InputDouble("Lift To", &settings.lift_to, 0.01f, 1.0f, "%.3f");
                     break;
@@ -274,25 +290,49 @@ void UIComponents::DrawOperationUI(vtkDearImGuiInjector* injector)
                     break;
             }
 
+            if (changed && settings.single_z_op && settings.op_type_index == 0) {
+                const auto* bounds = actorManager.modelActor->GetBounds();
+                auto* planeRep = actorManager.planeWidget->GetImplicitPlaneRepresentation();
+                planeRep->PlaceWidget(actorManager.modelActor->GetBounds());
+                // FIXME: 当前只可以通过ui来实际改变Plane的位置
+                planeRep->GetUnderlyingPlane()->SetOrigin((bounds[0] + bounds[1]) / 2.,
+                                                          (bounds[2] + bounds[3]) / 2.,
+                                                          settings.lift_to);
+                actorManager.planeWidget->On();
+            }
+            else if (!settings.single_z_op || settings.op_type_index != 0) {
+                actorManager.planeWidget->Off();
+            }
+
             // 如果有变化，保存设置
             if (changed) {
                 SettingsManager::SaveSettings();
             }
 
+            ImGui::BeginDisabled(!modelManager.cutter || !modelManager.surface);
             if (ImGui::Button("Run Operation")) {
                 if (modelManager.cutter && modelManager.surface) {
                     // 隐藏重叠三角形actor
                     actorManager.debugActor->VisibilityOff();
 
                     switch (settings.op_type_index) {
-                        case 0:
-                            waterline(modelManager,
-                                      actorManager,
-                                      settings.sampling,
-                                      settings.lift_to,
-                                      settings.lift_step,
-                                      settings.lift_from);
+                        case 0: {
+                            if (settings.single_z_op) {
+                                singleWaterline(modelManager,
+                                                actorManager,
+                                                settings.sampling,
+                                                settings.lift_to);
+                            }
+                            else {
+                                waterline(modelManager,
+                                          actorManager,
+                                          settings.sampling,
+                                          settings.lift_to,
+                                          settings.lift_step,
+                                          settings.lift_from);
+                            }
                             break;
+                        }
                         case 1:
                             adaptiveWaterline(modelManager,
                                               actorManager,
@@ -320,25 +360,8 @@ void UIComponents::DrawOperationUI(vtkDearImGuiInjector* injector)
                     }
                     injector->ForceResetCamera();
                 }
-                else {
-                    spdlog::error("No Cutter or Surface");
-                    ImGui::OpenPopup("No Cutter or Surface");
-                    // 弹出窗口居中显示
-                    auto center = ImGui::GetMainViewport()->GetCenter();
-                    ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
-                }
             }
-
-            if (ImGui::BeginPopupModal("No Cutter or Surface",
-                                       nullptr,
-                                       ImGuiWindowFlags_AlwaysAutoResize)) {
-                ImGui::Text("Please select a cutter and a surface");
-                ImGui::SetItemDefaultFocus();
-                if (ImGui::Button("OK", ImVec2(120, 0))) {
-                    ImGui::CloseCurrentPopup();
-                }
-                ImGui::EndPopup();
-            }
+            ImGui::EndDisabled();
         }
         ImGui::End();
     }

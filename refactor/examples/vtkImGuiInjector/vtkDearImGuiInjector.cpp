@@ -151,6 +151,7 @@ bool vtkDearImGuiInjector::SetUp(vtkRenderWindow* renWin)
         return false;
     }
 
+    // FIXME: these initialization will slower down the start-up of the APP...
     // Add actors to renderer
     renderer->AddActor(this->ActorManager.modelActor);
     renderer->AddActor(this->ActorManager.cutterActor);
@@ -159,6 +160,18 @@ bool vtkDearImGuiInjector::SetUp(vtkRenderWindow* renWin)
     renderer->AddActor(this->ActorManager.axesActor);
     renderer->AddActor(this->ActorManager.treeActor);
     renderer->AddActor(this->ActorManager.debugActor);
+
+    this->ActorManager.planeWidget->CreateDefaultRepresentation();
+    auto* planeRep = this->ActorManager.planeWidget->GetImplicitPlaneRepresentation();
+    planeRep->SetPlaceFactor(1.25);
+    planeRep->SetNormalToZAxis(true);
+    planeRep->SetSnapToAxes(true);
+    // Cannot rotate the Z Axis...
+    planeRep->SetAlwaysSnapToNearestAxis(true);
+    planeRep->SetOutlineTranslation(false);
+
+    this->ActorManager.planeWidget->SetInteractor(this->Interactor);
+    this->ActorManager.planeWidget->Off();  // default is off
     renderer->ResetCamera();
 
     // Configure ImGui IO

@@ -2,9 +2,9 @@
 
 // 添加随机数生成器相关头文件
 #include <functional>
+#include <random>
 #include <tbb/global_control.h>
 #include <tbb/info.h>
-#include <random>
 
 
 ocl::Path createGuidePath(const ocl::STLSurf& surface)
@@ -80,6 +80,46 @@ void waterline(CAMModelManager& model,
         actorManager.legendActor->VisibilityOff();
     }
 }
+
+void singleWaterline(CAMModelManager& model,
+               vtkActorManager& actorManager,
+               double sampling,
+               double z,
+               bool verbose)
+{
+    if (!model.cutter || !model.surface) {
+        spdlog::error("No cutter or surface");
+        return;
+    }
+
+    model.operation = std::make_unique<ocl::Waterline>();
+    auto& wl = *dynamic_cast<ocl::Waterline*>(model.operation.get());
+    wl.setSTL(*model.surface);
+    wl.setCutter(model.cutter.get());
+    wl.setSampling(sampling);
+
+    spdlog::info("Single Waterline at {}", z);
+
+    using loop_type = decltype(wl.getLoops());
+    std::vector<loop_type> all_loops;
+    spdlog::stopwatch sw;
+
+    wl.reset();
+    wl.setZ(z);
+    wl.run();
+    auto loops = wl.getLoops();
+    if (verbose) {
+        spdlog::info("Got {} loops at height {:.3f} in {} s", loops.size(), z, sw);
+    }
+    all_loops.emplace_back(std::move(loops));
+
+    UpdateLoopsActor(actorManager.operationActor, all_loops);
+    if (actorManager.operationActor) {
+        actorManager.operationActor->SetObjectName("Waterline");
+        actorManager.legendActor->VisibilityOff();
+    }
+}
+
 
 void adaptiveWaterline(CAMModelManager& model,
                        vtkActorManager& actorManager,
@@ -246,7 +286,8 @@ void hello_ocl()
     spdlog::info("max threads: {}", ocl::max_threads());
 
     spdlog::info("===== TBB Global Control info =====");
-    int max_parallelism = tbb::global_control::active_value(tbb::global_control::max_allowed_parallelism);
+    int max_parallelism =
+        tbb::global_control::active_value(tbb::global_control::max_allowed_parallelism);
     spdlog::info("max parallelism: {}", max_parallelism);
 
     size_t stack_size = tbb::global_control::active_value(tbb::global_control::thread_stack_size);

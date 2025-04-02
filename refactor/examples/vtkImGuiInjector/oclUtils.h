@@ -68,6 +68,12 @@ void waterline(CAMModelManager& model,
                double lift_from = 0.0,
                bool verbose = true);
 
+void singleWaterline(CAMModelManager& model,
+               vtkActorManager& actorManager,
+               double sampling,
+               double z = 0,
+               bool verbose = true);
+
 void adaptiveWaterline(CAMModelManager& model,
                        vtkActorManager& actorManager,
                        double sampling,

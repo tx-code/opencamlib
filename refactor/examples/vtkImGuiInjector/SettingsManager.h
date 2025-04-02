@@ -18,6 +18,7 @@ struct OCLSettings
 
     // Operation设置
     int op_type_index = 0;  // 默认Waterline
+    bool single_z_op = false; // for debuging waterline/adaptive waterline
     double sampling = 0.1;
     double min_sampling = 0.01;
     double lift_step = 0.1;
