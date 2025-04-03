@@ -26,6 +26,18 @@
             }
         },
         {
+            "name": "debug",
+            "displayName": "Debug Config",
+            "description": "Debug build configuration with vcpkg",
+            "inherits": "default",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "OCL_BUILD_IMGUIVTK": "OFF",
+                "OCL_BUILD_VTKINJECTOR": "ON",
+                "OCL_BUILD_NOGUI": "OFF"
+            }
+        },
+        {
             "name": "release",
             "displayName": "Release Config",
             "description": "Release build configuration with vcpkg",
