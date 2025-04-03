@@ -2,6 +2,18 @@
 
 本文档详细描述了OpenCAMLib (OCL)的重构计划，旨在通过引入现代C++17特性、libigl库和适当的设计模式，提高代码的可维护性、性能和可扩展性。
 
+## 相关文档
+
+本重构项目包含以下相关文档：
+
+- [Legacy_OCL.md](./Legacy_OCL.md) - 原始OCL库的架构和设计文档
+- [cutter.md](./cutter.md) - 刀具模型设计与实现
+- [drop_cutter.md](./drop_cutter.md) - Drop Cutter算法详细说明
+- [push_cutter.md](./push_cutter.md) - Push Cutter算法详细说明
+- [weave.md](./weave.md) - Weave算法详细说明
+- [adaptive_algorithm.md](./adaptive_algorithm.md) - 自适应加工算法详细说明
+- [KDTree.md](./KDTree.md) - KD树数据结构实现与应用
+
 ## 1. 重构目标
 
 - 采用C++17标准，利用其现代特性
