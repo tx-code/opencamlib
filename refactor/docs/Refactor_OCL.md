@@ -13,6 +13,7 @@
 - [weave.md](./weave.md) - Weave算法详细说明
 - [adaptive_algorithm.md](./adaptive_algorithm.md) - 自适应加工算法详细说明
 - [KDTree.md](./KDTree.md) - KD树数据结构实现与应用
+- [TDD.md](./TDD.md) - 测试驱动开发(TDD)的实施计划
 
 ## 1. 重构目标
 
@@ -617,6 +618,8 @@ private:
 
 ### 6.2 刀具模块重构
 
+#### 6.2.1 基于虚函数的方案
+
 ```cpp
 // 刀具接口
 class ICutter {
@@ -658,6 +661,134 @@ private:
 
 // 其他刀具类型...
 ```
+
+#### 6.2.2 基于CRTP的高性能方案
+
+考虑到CAM操作对性能要求高，我们也可以使用CRTP (Curiously Recurring Template Pattern) 来避免虚函数调用的运行时开销，同时保持良好的代码结构。
+
+```cpp
+// 基础刀具模板类 - 使用CRTP
+template <typename Derived>
+class BaseCutter {
+public:
+    double getDiameter() const { return derived().getDiameter(); }
+    double getLength() const { return derived().getLength(); }
+    
+    // 基础实现，可以被派生类重写
+    double height(double r) const { return derived().height(r); }
+    double width(double h) const { return derived().width(h); }
+    
+    // 通用算法，使用派生类的特定实现
+    CLPoint dropCutter(const Point& point, const IMesh& mesh) const {
+        // 通用实现，调用派生类的特定方法
+        return derived().dropCutterImpl(point, mesh);
+    }
+    
+private:
+    // 访问派生类实例
+    const Derived& derived() const {
+        return static_cast<const Derived&>(*this);
+    }
+    
+    Derived& derived() {
+        return static_cast<Derived&>(*this);
+    }
+};
+
+// 圆柱刀具实现
+class CylCutter : public BaseCutter<CylCutter> {
+public:
+    CylCutter(double diameter, double length) 
+        : diameter_(diameter), radius_(diameter/2), length_(length) {}
+    
+    double getDiameter() const { return diameter_; }
+    double getLength() const { return length_; }
+    
+    double height(double r) const {
+        return (r > radius_) ? -1.0 : 0.0;
+    }
+    
+    double width(double h) const {
+        return (h < 0.0) ? -1.0 : radius_;
+    }
+    
+    CLPoint dropCutterImpl(const Point& point, const IMesh& mesh) const {
+        // 圆柱刀具特定的drop cutter实现
+        // ...
+    }
+    
+private:
+    double diameter_;
+    double radius_;
+    double length_;
+};
+
+// 球头刀具实现
+class BallCutter : public BaseCutter<BallCutter> {
+public:
+    BallCutter(double diameter, double length)
+        : diameter_(diameter), radius_(diameter/2), length_(length) {}
+    
+    double getDiameter() const { return diameter_; }
+    double getLength() const { return length_; }
+    
+    double height(double r) const {
+        if (r > radius_) return -1.0;
+        return radius_ - std::sqrt(radius_*radius_ - r*r);
+    }
+    
+    double width(double h) const {
+        if (h < 0.0 || h > diameter_) return -1.0;
+        return std::sqrt(2.0*radius_*h - h*h);
+    }
+    
+    CLPoint dropCutterImpl(const Point& point, const IMesh& mesh) const {
+        // 球头刀具特定的drop cutter实现
+        // ...
+    }
+    
+private:
+    double diameter_;
+    double radius_;
+    double length_;
+};
+```
+
+CRTP方案的优势：
+
+1. **性能优化**：避免了虚函数调用的开销，所有调用在编译时解析
+2. **内联优化**：编译器可以内联函数调用，进一步提高性能
+3. **静态多态**：在编译时实现多态，而不是运行时
+4. **零开销抽象**：提供抽象但没有性能损失
+
+对于工厂模式，可以结合模板工厂实现：
+
+```cpp
+// 刀具工厂
+class CutterFactory {
+public:
+    template<typename CutterType>
+    static CutterType createCutter(double diameter, double length) {
+        return CutterType(diameter, length);
+    }
+    
+    // 或者使用类型枚举
+    template<typename CutterType>
+    static CutterType createFromType(CutterType type, double diameter, double length) {
+        switch (type) {
+            case CutterType::Cylindrical:
+                return CylCutter(diameter, length);
+            case CutterType::Ball:
+                return BallCutter(diameter, length);
+            // 其他刀具类型...
+            default:
+                throw std::invalid_argument("Unknown cutter type");
+        }
+    }
+};
+```
+
+在需要高性能的CAM操作中，特别是在内循环中频繁调用刀具方法时，CRTP方案可以带来明显的性能提升。
 
 ### 6.3 操作模块重构
 
