@@ -36,13 +36,27 @@ target_link_libraries(ocl
     TBB::tbb
 )
 
+# CMake built-in precompile headers...
+target_precompile_headers(ocl PUBLIC
+    <vector>
+    <map>
+    <memory>
+    <string>
+    <list>
+    <iostream>
+    <algorithm>
+    <spdlog/spdlog.h>
+    <spdlog/stopwatch.h>
+    <Eigen/Dense>
+)
+
 add_subdirectory(common)
 add_subdirectory(geo)
 add_subdirectory(cutters)
 add_subdirectory(dropcutter)
 add_subdirectory(algo)
 
-# After buiding, copy examples to the build directory
+# After building, copy examples to the build directory
 add_custom_command(TARGET ocl POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E make_directory
     $<TARGET_FILE_DIR:ocl>/stl

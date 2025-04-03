@@ -48,8 +48,17 @@ else()
     message(STATUS "Binary output directory: ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
 endif()
 
+# See https://ccache.dev/, you may need install ccache first
+find_program(CCACHE_PROGRAM ccache)
+if(CCACHE_PROGRAM)
+    set(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
+    set(CMAKE_C_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
+    message(STATUS "Using ccache: ${CCACHE_PROGRAM}")
+endif()
+
 # Common 3rd party libraries
 find_package(libigl CONFIG REQUIRED)
+find_package(CGAL REQUIRED) # Although the CGAL is linked with the libigl, we explicitly find it here to avoid the conflict.
 find_package(spdlog CONFIG REQUIRED)
 find_package(Boost REQUIRED COMPONENTS math graph)
 find_package(OpenMP REQUIRED)
