@@ -17,8 +17,10 @@
 #include <boost/math/constants/constants.hpp>
 #include <imgui.h>
 #include <spdlog/spdlog.h>
+#include <vtkLineRepresentation.h>
 #include <vtkMapper.h>
 #include <vtkPlane.h>
+#include <vtkPointHandleRepresentation3D.h>
 #include <vtkPoints.h>
 #include <vtkPolyData.h>
 #include <vtkSmartPointer.h>
@@ -226,29 +228,14 @@ void UIComponents::DrawOperationUI(vtkDearImGuiInjector* injector)
                                     op_types,
                                     IM_ARRAYSIZE(op_types));
 
-            if (actorManager.planeWidget->GetEnabled()) {
-                settings.lift_to = actorManager.planeWidget->GetImplicitPlaneRepresentation()
-                                       ->GetUnderlyingPlane()
-                                       ->GetOrigin()[2];
-            }
-
             switch (settings.op_type_index) {
                 case 0:
-                    changed |= ImGui::Checkbox("Single Z Op", &settings.single_z_op);
                     changed |=
                         ImGui::InputDouble("Sampling", &settings.sampling, 0.01f, 1.0f, "%.3f");
-                    if (!settings.single_z_op) {
-                        changed |= ImGui::InputDouble("Lift Step",
-                                                      &settings.lift_step,
-                                                      0.01f,
-                                                      1.0f,
-                                                      "%.3f");
-                        changed |= ImGui::InputDouble("Lift From",
-                                                      &settings.lift_from,
-                                                      0.01f,
-                                                      1.0f,
-                                                      "%.3f");
-                    }
+                    changed |=
+                        ImGui::InputDouble("Lift Step", &settings.lift_step, 0.01f, 1.0f, "%.3f");
+                    changed |=
+                        ImGui::InputDouble("Lift From", &settings.lift_from, 0.01f, 1.0f, "%.3f");
                     changed |=
                         ImGui::InputDouble("Lift To", &settings.lift_to, 0.01f, 1.0f, "%.3f");
                     break;
@@ -290,20 +277,6 @@ void UIComponents::DrawOperationUI(vtkDearImGuiInjector* injector)
                     break;
             }
 
-            if (changed && settings.single_z_op && settings.op_type_index == 0) {
-                const auto* bounds = actorManager.modelActor->GetBounds();
-                auto* planeRep = actorManager.planeWidget->GetImplicitPlaneRepresentation();
-                planeRep->PlaceWidget(actorManager.modelActor->GetBounds());
-                // FIXME: 当前只可以通过ui来实际改变Plane的位置
-                planeRep->GetUnderlyingPlane()->SetOrigin((bounds[0] + bounds[1]) / 2.,
-                                                          (bounds[2] + bounds[3]) / 2.,
-                                                          settings.lift_to);
-                actorManager.planeWidget->On();
-            }
-            else if (!settings.single_z_op || settings.op_type_index != 0) {
-                actorManager.planeWidget->Off();
-            }
-
             // 如果有变化，保存设置
             if (changed) {
                 SettingsManager::SaveSettings();
@@ -317,20 +290,12 @@ void UIComponents::DrawOperationUI(vtkDearImGuiInjector* injector)
 
                     switch (settings.op_type_index) {
                         case 0: {
-                            if (settings.single_z_op) {
-                                singleWaterline(modelManager,
-                                                actorManager,
-                                                settings.sampling,
-                                                settings.lift_to);
-                            }
-                            else {
-                                waterline(modelManager,
-                                          actorManager,
-                                          settings.sampling,
-                                          settings.lift_to,
-                                          settings.lift_step,
-                                          settings.lift_from);
-                            }
+                            waterline(modelManager,
+                                      actorManager,
+                                      settings.sampling,
+                                      settings.lift_to,
+                                      settings.lift_step,
+                                      settings.lift_from);
                             break;
                         }
                         case 1:
@@ -744,6 +709,150 @@ void UIComponents::DrawOperationModelUI(vtkDearImGuiInjector* injector)
         else {
             ImGui::TextDisabled("No Operation");
         }
+
+        // 使用全局设置
+        auto& settings = SettingsManager::GetSettings();
+        auto* bounds = actorManager.modelActor->GetBounds();
+        ImGui::SeparatorText("Single Operation");
+        ImGui::BeginDisabled(!modelManager.cutter || !modelManager.surface);
+        // SingleOp Waterline
+        if (ImGui::CollapsingHeader("Single Waterline")) {
+            bool enablePlaneWidget = actorManager.planeWidget->GetEnabled();
+            if (ImGui::Checkbox("Enable Plane Widget", &enablePlaneWidget)) {
+                // checked the CheckBox will update the plane widget
+
+                auto* planeRep = actorManager.planeWidget->GetImplicitPlaneRepresentation();
+                planeRep->PlaceWidget(bounds);
+                planeRep->GetUnderlyingPlane()->SetOrigin((bounds[0] + bounds[1]) / 2.,
+                                                          (bounds[2] + bounds[3]) / 2.,
+                                                          (bounds[4] + bounds[5]) / 2.);
+                if (enablePlaneWidget) {
+                    actorManager.planeWidget->On();
+                }
+                else {
+                    actorManager.planeWidget->Off();
+                }
+            }
+
+            if (enablePlaneWidget) {
+                // Now, we are using the plane widget to get the z-height
+                auto* planeRep = actorManager.planeWidget->GetImplicitPlaneRepresentation();
+                double pos[3];
+                planeRep->GetOrigin(pos);
+                ImGui::Text("Plane Position: %.3f, %.3f, %.3f", pos[0], pos[1], pos[2]);
+                static double sampling_ = 0.1;
+                ImGui::InputDouble("Sampling", &sampling_, 0.01f, 1.0f, "%.3f");
+                if (ImGui::Button("Run Single Waterline")) {
+                    singleWaterline(modelManager, actorManager, sampling_, pos[2], true);
+                }
+            }
+        }
+
+        // Single FiberPushCutter
+        if (ImGui::CollapsingHeader("Single FiberPushCutter")) {
+            auto* lineRep = actorManager.lineWidget->GetLineRepresentation();
+            auto* pointHandle1 = lineRep->GetPoint1Representation();
+            auto* pointHandle2 = lineRep->GetPoint2Representation();
+            // 4 directions, +X,-X,+Y,-Y
+            static int direction = 0;
+            static bool first = true;
+            bool needUpdated = ImGui::Combo("Direction", &direction, "X+\0-X\0+Y\0-Y\0\0");
+            if (needUpdated || first) {
+                first = false;
+                if (direction == 0 || direction == 1) {
+                    double point1[3] = {bounds[0],
+                                        (bounds[2] + bounds[3]) / 2.,
+                                        (bounds[4] + bounds[5]) / 2.};
+                    double point2[3] = {bounds[1],
+                                        (bounds[2] + bounds[3]) / 2.,
+                                        (bounds[4] + bounds[5]) / 2.};
+                    if (direction == 0) {
+                        lineRep->SetPoint1WorldPosition(point1);
+                        lineRep->SetPoint2WorldPosition(point2);
+                    }
+                    else {
+                        lineRep->SetPoint1WorldPosition(point2);
+                        lineRep->SetPoint2WorldPosition(point1);
+                    }
+                }
+                else if (direction == 2 || direction == 3) {
+                    double point1[3] = {(bounds[0] + bounds[1]) / 2.,
+                                        bounds[2],
+                                        (bounds[4] + bounds[5]) / 2.};
+                    double point2[3] = {(bounds[0] + bounds[1]) / 2.,
+                                        bounds[3],
+                                        (bounds[4] + bounds[5]) / 2.};
+                    if (direction == 2) {
+                        lineRep->SetPoint1WorldPosition(point1);
+                        lineRep->SetPoint2WorldPosition(point2);
+                    }
+                    else {
+                        lineRep->SetPoint1WorldPosition(point2);
+                        lineRep->SetPoint2WorldPosition(point1);
+                    }
+                }
+            }
+            bool enableLineWidget = actorManager.lineWidget->GetEnabled();
+            needUpdated = ImGui::Checkbox("Enable Line Widget", &enableLineWidget);
+            if (needUpdated) {
+                // checked the CheckBox will update the line widget
+                if (enableLineWidget) {
+                    actorManager.lineWidget->On();
+                }
+                else {
+                    actorManager.lineWidget->Off();
+                }
+            }
+
+            if (enableLineWidget) {
+                double start[3], end[3];
+                pointHandle1->GetWorldPosition(start);
+                pointHandle2->GetWorldPosition(end);
+
+                // 约束线段方向与选定的坐标轴平行
+                if (pointHandle1->GetMTime() < pointHandle2->GetMTime()) {
+                    // 刚刚移动了Point2，调整Start点，保持轴向一致
+                    if (direction == 0 || direction == 1) {
+                        // X轴方向，保持Y和Z不变
+                        start[1] = end[1];
+                        start[2] = end[2];
+                    }
+                    else {
+                        // Y轴方向，保持X和Z不变
+                        start[0] = end[0];
+                        start[2] = end[2];
+                    }
+                    pointHandle1->SetWorldPosition(start);
+                }
+                else if (pointHandle1->GetMTime() > pointHandle2->GetMTime()) {
+                    // 刚刚移动了Point1，调整End点，保持轴向一致
+                    if (direction == 0 || direction == 1) {
+                        // X轴方向，保持Y和Z不变
+                        end[1] = start[1];
+                        end[2] = start[2];
+                    }
+                    else {
+                        // Y轴方向，保持X和Z不变
+                        end[0] = start[0];
+                        end[2] = start[2];
+                    }
+                    pointHandle2->SetWorldPosition(end);
+                }
+
+                ImGui::Text("Line Start: %.3f, %.3f, %.3f", start[0], start[1], start[2]);
+                ImGui::Text("Line End: %.3f, %.3f, %.3f", end[0], end[1], end[2]);
+
+                if (ImGui::Button("Run FiberPushCutter")) {
+                    fiberPushCutter(modelManager,
+                                    actorManager,
+                                    Eigen::Vector3d(start[0], start[1], start[2]),
+                                    Eigen::Vector3d(end[0], end[1], end[2]),
+                                    true);
+                }
+            }
+        }
+        ImGui::EndDisabled();
+
         ImGui::TreePop();
     }
 }

@@ -9,11 +9,15 @@
 #include "vtkKeySymToImGuiKey.h"
 
 #include <vtkCallbackCommand.h>
+#include <vtkConstrainedPointHandleRepresentation.h>
 #include <vtkInteractorStyleSwitch.h>
+#include <vtkLineRepresentation.h>
+#include <vtkNamedColors.h>
 #include <vtkObject.h>
 #include <vtkObjectFactory.h>
 #include <vtkOpenGLFramebufferObject.h>
 #include <vtkOpenGLRenderWindow.h>
+#include <vtkPointHandleRepresentation3D.h>
 #include <vtkRenderWindow.h>
 #include <vtkRenderWindowInteractor.h>
 #include <vtkRendererCollection.h>
@@ -151,6 +155,8 @@ bool vtkDearImGuiInjector::SetUp(vtkRenderWindow* renWin)
         return false;
     }
 
+    vtkNew<vtkNamedColors> namedColors;
+
     // FIXME: these initialization will slower down the start-up of the APP...
     // Add actors to renderer
     renderer->AddActor(this->ActorManager.modelActor);
@@ -161,17 +167,31 @@ bool vtkDearImGuiInjector::SetUp(vtkRenderWindow* renWin)
     renderer->AddActor(this->ActorManager.treeActor);
     renderer->AddActor(this->ActorManager.debugActor);
 
-    this->ActorManager.planeWidget->CreateDefaultRepresentation();
-    auto* planeRep = this->ActorManager.planeWidget->GetImplicitPlaneRepresentation();
+    // Plane Widget and its Rep
+    auto& planeWidget = this->ActorManager.planeWidget;
+    planeWidget->CreateDefaultRepresentation();
+    auto* planeRep = planeWidget->GetImplicitPlaneRepresentation();
     planeRep->SetPlaceFactor(1.25);
     planeRep->SetNormalToZAxis(true);
     planeRep->SetSnapToAxes(true);
     // Cannot rotate the Z Axis...
     planeRep->SetAlwaysSnapToNearestAxis(true);
     planeRep->SetOutlineTranslation(false);
+    planeWidget->SetInteractor(this->Interactor);
+    planeWidget->Off();  // default is off
 
-    this->ActorManager.planeWidget->SetInteractor(this->Interactor);
-    this->ActorManager.planeWidget->Off();  // default is off
+    // Line Widget and its Rep
+    auto& lineWidget = this->ActorManager.lineWidget;
+    lineWidget->CreateDefaultRepresentation();
+    auto* lineRep = lineWidget->GetLineRepresentation();
+    auto* pointRep1 = lineRep->GetPoint1Representation();
+    auto* pointRep2 = lineRep->GetPoint2Representation();
+    // start is default, end is green
+    lineRep->GetEndPoint2Property()->SetColor(namedColors->GetColor3d("Green").GetData());
+    lineRep->DirectionalLineOn();
+    lineWidget->SetInteractor(this->Interactor);
+    lineWidget->Off();
+
     renderer->ResetCamera();
 
     // Configure ImGui IO

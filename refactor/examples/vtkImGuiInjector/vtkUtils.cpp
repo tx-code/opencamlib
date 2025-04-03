@@ -740,3 +740,77 @@ void UpdatePointCloudActor(vtkSmartPointer<vtkActor>& actor,
     SetActorOpacity(actor, opacity);
     actor->GetProperty()->SetPointSize(3);
 }
+
+void UpdateFiberActor(vtkSmartPointer<vtkActor>& actor,
+                      const std::vector<ocl::Fiber>& fibers,
+                      const double lineColor[3],
+                      const double pointColor[3],
+                      double opacity)
+{
+    assert(actor);
+    vtkNew<vtkPoints> points;
+    vtkNew<vtkCellArray> lines;
+    vtkNew<vtkCellArray> vertices;
+
+    // 用于存储颜色
+    vtkNew<vtkUnsignedCharArray> cellColors;
+    cellColors->SetNumberOfComponents(3);
+    cellColors->SetName("CellColors");
+
+    // 转换颜色为unsigned char数组以用于VTK
+    unsigned char lineColorUC[3], pointColorUC[3];
+    for (int i = 0; i < 3; i++) {
+        lineColorUC[i] = static_cast<unsigned char>(lineColor[i] * 255.0);
+        pointColorUC[i] = static_cast<unsigned char>(pointColor[i] * 255.0);
+    }
+
+    int pointId = 0;
+    for (const auto& fiber : fibers) {
+        for (const auto& interval : fiber.ints) {
+            auto p1 = fiber.point(interval.lower);
+            auto p2 = fiber.point(interval.upper);
+
+            // 添加起点和终点
+            points->InsertNextPoint(p1.x, p1.y, p1.z);
+            points->InsertNextPoint(p2.x, p2.y, p2.z);
+
+            // 创建从起点到终点的线
+            vtkNew<vtkLine> line;
+            line->GetPointIds()->SetId(0, pointId);
+            line->GetPointIds()->SetId(1, pointId + 1);
+            lines->InsertNextCell(line);
+            cellColors->InsertNextTypedTuple(lineColorUC);
+
+            // 创建起点和终点的顶点
+            vtkNew<vtkVertex> vertex1;
+            vertex1->GetPointIds()->SetId(0, pointId);
+            vertices->InsertNextCell(vertex1);
+            cellColors->InsertNextTypedTuple(pointColorUC);
+
+            vtkNew<vtkVertex> vertex2;
+            vertex2->GetPointIds()->SetId(0, pointId + 1);
+            vertices->InsertNextCell(vertex2);
+            cellColors->InsertNextTypedTuple(pointColorUC);
+
+            pointId += 2;
+        }
+    }
+
+    vtkNew<vtkPolyData> polyData;
+    polyData->SetPoints(points);
+    polyData->SetLines(lines);
+    polyData->SetVerts(vertices);
+    polyData->GetCellData()->SetScalars(cellColors);
+
+    vtkNew<vtkPolyDataMapper> mapper;
+    mapper->SetInputData(polyData);
+    mapper->SetScalarModeToUseCellData();
+    mapper->ScalarVisibilityOn();
+
+    actor->SetMapper(mapper);
+    actor->GetProperty()->SetLineWidth(2);
+    actor->GetProperty()->SetPointSize(5);
+    SetActorOpacity(actor, opacity);
+
+    actor->SetObjectName(fmt::format("Fibers(N={})", fibers.size()));
+}

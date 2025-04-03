@@ -1,5 +1,7 @@
 ﻿#include "oclUtils.h"
 
+#include "algo/fiberpushcutter.hpp"
+
 // 添加随机数生成器相关头文件
 #include <functional>
 #include <random>
@@ -82,10 +84,10 @@ void waterline(CAMModelManager& model,
 }
 
 void singleWaterline(CAMModelManager& model,
-               vtkActorManager& actorManager,
-               double sampling,
-               double z,
-               bool verbose)
+                     vtkActorManager& actorManager,
+                     double sampling,
+                     double z,
+                     bool verbose)
 {
     if (!model.cutter || !model.surface) {
         spdlog::error("No cutter or surface");
@@ -323,4 +325,40 @@ std::vector<ocl::CLPoint> debugPointDropCutter(CAMModelManager& model, const ocl
     }
     spdlog::info("DropCutter done in {} calls and got {} points", calls, res.size());
     return res;
+}
+
+void fiberPushCutter(CAMModelManager& model,
+                     vtkActorManager& actorManager,
+                     const Eigen::Vector3d& start,
+                     const Eigen::Vector3d& end,
+                     bool verbose)
+{
+    if (!model.cutter || !model.surface) {
+        spdlog::error("No cutter or surface");
+        return;
+    }
+
+    Eigen::Vector3d dir = end - start;
+    dir.normalize();
+    int direction = 0;  // 0 for x, 1 for y
+    if (dir.isApprox(Eigen::Vector3d::UnitY()) || dir.isApprox(Eigen::Vector3d::UnitY() * -1)) {
+        direction = 1;
+    }
+    ocl::Fiber fiber(ocl::Point(start[0], start[1], start[2]), ocl::Point(end[0], end[1], end[2]));
+    spdlog::info("Create a fiber: {}", fiber.str());
+
+    model.operation = std::make_unique<ocl::FiberPushCutter>();
+    auto& fpc = *dynamic_cast<ocl::FiberPushCutter*>(model.operation.get());
+    if (direction == 0) {
+        fpc.setXDirection();
+    }
+    else {
+        fpc.setYDirection();
+    }
+    fpc.setSTL(*model.surface);
+    fpc.setCutter(model.cutter.get());
+    fpc.run(fiber);
+
+    spdlog::info("After running the fpc, fiber: {}", fiber.str());
+    UpdateFiberActor(actorManager.operationActor, {fiber});
 }

@@ -69,10 +69,16 @@ void waterline(CAMModelManager& model,
                bool verbose = true);
 
 void singleWaterline(CAMModelManager& model,
-               vtkActorManager& actorManager,
-               double sampling,
-               double z = 0,
-               bool verbose = true);
+                     vtkActorManager& actorManager,
+                     double sampling,
+                     double z = 0,
+                     bool verbose = true);
+
+void fiberPushCutter(CAMModelManager& model,
+                     vtkActorManager& actorManager,
+                     const Eigen::Vector3d& start,
+                     const Eigen::Vector3d& end,
+                     bool verbose = true);
 
 void adaptiveWaterline(CAMModelManager& model,
                        vtkActorManager& actorManager,

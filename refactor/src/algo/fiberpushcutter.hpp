@@ -56,9 +56,9 @@ public:
   }
   /// run() is an error.
   void run() { assert(0); }
-  void run(Fiber &f) { pushCutter2(f); }
+  void run(Fiber& f) override;
 
-protected:
+  protected:
   /// input fiber is tested against all triangles of surface
   void pushCutter1(Fiber &f);
   /// use kd-tree search to find overlapping triangles

@@ -44,23 +44,31 @@ FiberPushCutter::FiberPushCutter() {
 
 FiberPushCutter::~FiberPushCutter() { delete root; }
 
-void FiberPushCutter::setSTL(const STLSurf &s) {
-  surf = &s;
-  // std::cout << "BPC::setSTL() Building kd-tree... bucketSize=" << bucketSize
-  // << "..";
-  root->setBucketSize(bucketSize);
-  if (x_direction)
-    root->setYZDimensions();
-  else if (y_direction)
-    root->setXZDimensions();
-  else {
-    std::cout << " ERROR: setXDirection() or setYDirection() must be called "
-                 "before setSTL() \n";
-    assert(0);
-  }
-  // std::cout << "BPC::setSTL() root->build()";
-  root->build(s.tris);
-  // std::cout << " done.\n";
+void FiberPushCutter::setSTL(const STLSurf& s)
+{
+    surf = &s;
+    // std::cout << "BPC::setSTL() Building kd-tree... bucketSize=" << bucketSize
+    // << "..";
+    root->setBucketSize(bucketSize);
+    if (x_direction)
+        root->setYZDimensions();
+    else if (y_direction)
+        root->setXZDimensions();
+    else {
+        std::cout << " ERROR: setXDirection() or setYDirection() must be called "
+                     "before setSTL() \n";
+        assert(0);
+    }
+    // std::cout << "BPC::setSTL() root->build()";
+    root->build(s.tris);
+    // std::cout << " done.\n";
+}
+
+void FiberPushCutter::run(Fiber& f)
+{
+    assert(cutter);
+    assert(surf);
+    pushCutter2(f);
 }
 
 void FiberPushCutter::pushCutter1(Fiber &f) {

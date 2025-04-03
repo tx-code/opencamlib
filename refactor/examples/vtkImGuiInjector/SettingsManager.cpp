@@ -46,9 +46,6 @@ void SettingsManager::LoadSettings()
                 if (op.contains("type_index"))
                     s_settings.op_type_index = op["type_index"].get<int>();
 
-                if (op.contains("single_z_op"))
-                    s_settings.single_z_op = op["single_z_op"].get<bool>();
-
                 if (op.contains("sampling"))
                     s_settings.sampling = op["sampling"].get<double>();
 
@@ -93,7 +90,6 @@ void SettingsManager::SaveSettings()
 
     // 保存Operation设置
     j["operation"] = {{"type_index", s_settings.op_type_index},
-                      {"single_z_op", s_settings.single_z_op},
                       {"sampling", s_settings.sampling},
                       {"min_sampling", s_settings.min_sampling},
                       {"lift_step", s_settings.lift_step},
