@@ -50,6 +50,7 @@ endif()
 
 # See https://ccache.dev/, you may need install ccache first
 find_program(CCACHE_PROGRAM ccache)
+
 if(CCACHE_PROGRAM)
     set(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
     set(CMAKE_C_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
@@ -75,8 +76,7 @@ if(OCL_BUILD_EXAMPLES)
 endif()
 
 if(OCL_BUILD_TESTS)
-    find_package(Boost REQUIRED COMPONENTS unit_test_framework)
-    enable_testing()
+    add_subdirectory(refactor/tests)
 endif()
 
 # TODO install rules

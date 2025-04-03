@@ -20,12 +20,16 @@
 
 ### 2.1 测试框架选择
 
-采用Boost Test Framework作为主要测试框架，结合CMake构建系统：
+采用Google Test (gtest)作为主要测试框架，结合CMake构建系统：
 
 ```cpp
 // tests/main.cpp
-#define BOOST_TEST_MODULE OCL_Tests
-#include <boost/test/unit_test.hpp>
+#include <gtest/gtest.h>
+
+int main(int argc, char **argv) {
+    ::testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
+}
 ```
 
 ### 2.2 基本测试结构
@@ -54,7 +58,13 @@ tests/
 
 ```cmake
 # tests/CMakeLists.txt
-find_package(Boost REQUIRED COMPONENTS unit_test_framework)
+include(FetchContent)
+FetchContent_Declare(
+  googletest
+  GIT_REPOSITORY https://github.com/google/googletest.git
+  GIT_TAG release-1.12.1
+)
+FetchContent_MakeAvailable(googletest)
 
 add_executable(ocl_tests
     main.cpp
@@ -65,7 +75,8 @@ add_executable(ocl_tests
 target_link_libraries(ocl_tests
     PRIVATE
         ocl
-        Boost::unit_test_framework
+        gtest
+        gtest_main
 )
 
 add_test(NAME ocl_tests COMMAND ocl_tests)
@@ -79,52 +90,51 @@ add_test(NAME ocl_tests COMMAND ocl_tests)
 
 ```cpp
 // tests/geo/point_test.cpp
-BOOST_AUTO_TEST_SUITE(GeoTests)
+#include <gtest/gtest.h>
+#include "geo/point.h"
 
-BOOST_AUTO_TEST_CASE(PointOperations) {
+TEST(GeoTests, PointOperations) {
     Point p1(1.0, 2.0, 3.0);
     Point p2(4.0, 5.0, 6.0);
     
     // 向量运算测试
     auto v = p2 - p1;
-    BOOST_CHECK_CLOSE(v.norm(), 5.196, 0.001);
+    EXPECT_NEAR(v.norm(), 5.196, 0.001);
     
     // 点积测试
-    BOOST_CHECK_CLOSE(v.dot(v), 27.0, 0.001);
+    EXPECT_NEAR(v.dot(v), 27.0, 0.001);
 }
-
-BOOST_AUTO_TEST_SUITE_END()
 ```
 
 ### 3.2 刀具模型测试
 
 ```cpp
 // tests/cutters/cylcutter_test.cpp
-BOOST_AUTO_TEST_SUITE(CutterTests)
+#include <gtest/gtest.h>
+#include "cutters/cylcutter.h"
 
-BOOST_AUTO_TEST_CASE(CylCutterGeometry) {
+TEST(CutterTests, CylCutterGeometry) {
     CylCutter cutter(10.0, 20.0);  // 直径10mm，长度20mm
     
     // 高度函数测试
-    BOOST_CHECK_EQUAL(cutter.height(0.0), 0.0);    // 中心点高度
-    BOOST_CHECK_EQUAL(cutter.height(4.9), 0.0);    // 半径内高度
-    BOOST_CHECK_EQUAL(cutter.height(5.1), -1.0);   // 超出半径
+    EXPECT_DOUBLE_EQ(cutter.height(0.0), 0.0);    // 中心点高度
+    EXPECT_DOUBLE_EQ(cutter.height(4.9), 0.0);    // 半径内高度
+    EXPECT_DOUBLE_EQ(cutter.height(5.1), -1.0);   // 超出半径
     
     // 宽度函数测试
-    BOOST_CHECK_EQUAL(cutter.width(0.0), 5.0);     // 水平面宽度
-    BOOST_CHECK_EQUAL(cutter.width(-1.0), -1.0);   // 无效高度
+    EXPECT_DOUBLE_EQ(cutter.width(0.0), 5.0);     // 水平面宽度
+    EXPECT_DOUBLE_EQ(cutter.width(-1.0), -1.0);   // 无效高度
 }
-
-BOOST_AUTO_TEST_SUITE_END()
 ```
 
 ### 3.3 算法单元测试
 
 ```cpp
 // tests/dropcutter/dropcutter_test.cpp
-BOOST_AUTO_TEST_SUITE(DropCutterTests)
+#include <gtest/gtest.h>
+#include "operations/dropcutter.h"
 
-BOOST_AUTO_TEST_CASE(TriangleDropCutter) {
+TEST(DropCutterTests, TriangleDropCutter) {
     // 创建简单平面三角形
     Triangle t({0,0,0}, {10,0,0}, {0,10,0});
     CylCutter cutter(2.0, 10.0);
@@ -133,43 +143,46 @@ BOOST_AUTO_TEST_CASE(TriangleDropCutter) {
     Point sample(5, 5, 10);
     auto result = dropCutter(cutter, t, sample);
     
-    BOOST_CHECK_CLOSE(result.z, 0.0, 0.001);
+    EXPECT_NEAR(result.z, 0.0, 0.001);
     
     // 测试边缘情况
     Point edge(10, 10, 10);
     auto edgeResult = dropCutter(cutter, t, edge);
-    BOOST_CHECK(edgeResult.type == CLPoint::EDGE);
+    EXPECT_EQ(edgeResult.type, CLPoint::EDGE);
 }
-
-BOOST_AUTO_TEST_SUITE_END()
 ```
 
 ## 4. 测试技术与模式
 
 ### 4.1 参数化测试
 
-使用Boost.Test的参数化测试功能测试多个输入：
+使用Google Test的参数化测试功能测试多个输入：
 
 ```cpp
-BOOST_AUTO_TEST_CASE(BallCutterHeightFunction) {
+struct HeightTestCase {
+    double r;
+    double expectedHeight;
+};
+
+class BallCutterTest : public ::testing::TestWithParam<HeightTestCase> {};
+
+TEST_P(BallCutterTest, HeightFunction) {
+    auto testCase = GetParam();
     BallCutter cutter(10.0, 30.0);  // 直径10mm球刀
     
-    struct TestCase {
-        double r;      // 输入半径
-        double expectedHeight;  // 期望高度
-    };
-    
-    std::vector<TestCase> testCases = {
-        {0.0, 0.0},         // 中心点
-        {2.5, 0.3371},      // 1/4半径
-        {5.0, 5.0},         // 刀具半径
-        {6.0, -1.0}         // 超出半径
-    };
-    
-    for (const auto& tc : testCases) {
-        BOOST_CHECK_CLOSE(cutter.height(tc.r), tc.expectedHeight, 0.001);
-    }
+    EXPECT_NEAR(cutter.height(testCase.r), testCase.expectedHeight, 0.001);
 }
+
+INSTANTIATE_TEST_SUITE_P(
+    HeightFunctionTests,
+    BallCutterTest,
+    ::testing::Values(
+        HeightTestCase{0.0, 0.0},         // 中心点
+        HeightTestCase{2.5, 0.3371},      // 1/4半径
+        HeightTestCase{5.0, 5.0},         // 刀具半径
+        HeightTestCase{6.0, -1.0}         // 超出半径
+    )
+);
 ```
 
 ### 4.2 测试夹具
@@ -178,8 +191,12 @@ BOOST_AUTO_TEST_CASE(BallCutterHeightFunction) {
 
 ```cpp
 // tests/fixtures/mesh_fixture.hpp
-struct MeshFixture {
-    MeshFixture() {
+#include <gtest/gtest.h>
+#include "mesh/libigl_mesh.h"
+
+class MeshFixture : public ::testing::Test {
+protected:
+    void SetUp() override {
         // 创建测试网格
         mesh = std::make_shared<LibiglMesh>();
         // 添加网格数据
@@ -209,7 +226,7 @@ struct MeshFixture {
 结合功能测试和性能测试：
 
 ```cpp
-BOOST_AUTO_TEST_CASE(DropCutterPerformance) {
+TEST(PerformanceTests, DropCutterPerformance) {
     // 创建较大的网格
     auto mesh = createLargeMesh(10000);
     CylCutter cutter(10.0, 20.0);
@@ -230,7 +247,7 @@ BOOST_AUTO_TEST_CASE(DropCutterPerformance) {
     std::cout << "Processing time: " << duration.count() << "ms" << std::endl;
     
     // 基准性能检查
-    BOOST_CHECK(duration.count() < 5000); // 应该在5秒内完成
+    EXPECT_LT(duration.count(), 5000); // 应该在5秒内完成
 }
 ```
 
@@ -239,13 +256,16 @@ BOOST_AUTO_TEST_CASE(DropCutterPerformance) {
 浮点数比较采用相对误差：
 
 ```cpp
-// 使用BOOST_CHECK_CLOSE进行浮点数比较
-BOOST_CHECK_CLOSE(actual, expected, 0.001); // 0.001%的相对误差
+// 使用EXPECT_NEAR进行浮点数比较
+EXPECT_NEAR(actual, expected, 0.001); // 允许0.001的绝对误差
 
 // 或者自定义比较函数
 bool almostEqual(double a, double b, double tolerance = 1e-10) {
     return std::abs(a - b) <= tolerance * std::max(1.0, std::max(std::abs(a), std::abs(b)));
 }
+
+// 在测试中使用
+EXPECT_TRUE(almostEqual(actual, expected));
 ```
 
 ## 5. TDD开发流程
@@ -260,17 +280,17 @@ bool almostEqual(double a, double b, double tolerance = 1e-10) {
 
 ```cpp
 // Step 1: 写测试
-BOOST_AUTO_TEST_CASE(CalculateContactPoint) {
+TEST(CutterTests, CalculateContactPoint) {
     CylCutter cutter(10.0, 20.0);
     Triangle tri({0,0,0}, {10,0,0}, {0,10,0});
     Point samplePoint(5, 5, 10);
     
     auto contact = cutter.calculateContactPoint(tri, samplePoint);
     
-    BOOST_REQUIRE(contact.has_value());
-    BOOST_CHECK_CLOSE(contact->x, 5.0, 0.001);
-    BOOST_CHECK_CLOSE(contact->y, 5.0, 0.001);
-    BOOST_CHECK_CLOSE(contact->z, 0.0, 0.001);
+    ASSERT_TRUE(contact.has_value());
+    EXPECT_NEAR(contact->x, 5.0, 0.001);
+    EXPECT_NEAR(contact->y, 5.0, 0.001);
+    EXPECT_NEAR(contact->z, 0.0, 0.001);
 }
 
 // Step 2: 实现功能
@@ -302,7 +322,7 @@ std::optional<Point> CylCutter::calculateContactPoint(
 3. 数值极限情况（非常大或非常小的值）
 
 ```cpp
-BOOST_AUTO_TEST_CASE(EdgeCases) {
+TEST(DropCutterTests, EdgeCases) {
     // 测试刀具与三角形边缘的接触
     Triangle t({0,0,0}, {10,0,0}, {0,10,0});
     CylCutter cutter(2.0, 10.0);
@@ -311,8 +331,8 @@ BOOST_AUTO_TEST_CASE(EdgeCases) {
     Point edgePoint(5, 0, 10);  // 位于三角形边缘上方
     auto result = dropCutter(cutter, t, edgePoint);
     
-    BOOST_CHECK(result.type == CLPoint::EDGE);
-    BOOST_CHECK_CLOSE(result.z, 0.0, 0.001);
+    EXPECT_EQ(result.type, CLPoint::EDGE);
+    EXPECT_NEAR(result.z, 0.0, 0.001);
 }
 ```
 
@@ -332,7 +352,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Install dependencies
-        run: sudo apt-get install -y libboost-test-dev libeigen3-dev
+        run: sudo apt-get install -y libeigen3-dev
       - name: Build
         run: |
           mkdir build && cd build
