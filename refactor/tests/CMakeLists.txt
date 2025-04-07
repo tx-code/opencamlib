@@ -6,7 +6,11 @@ include(GoogleTest)
 
 add_executable(OCL_Tests
         main.cpp
-        geo/test_point.cpp)
+        geo/test_point.cpp
+        cutters/test_cylcutter.cpp
+        cutters/test_ballcutter.cpp
+        cutters/test_bullcutter.cpp
+        cutters/test_conecutter.cpp)
 
 target_link_libraries(OCL_Tests
         ocl
