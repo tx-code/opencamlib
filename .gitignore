@@ -28,5 +28,6 @@ _build/
 boost*
 env/
 .idea/*
+.cache/*
 
 CMakeUserPresets.json

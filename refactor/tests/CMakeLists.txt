@@ -5,6 +5,7 @@ find_package(GTest CONFIG REQUIRED)
 include(GoogleTest)
 
 add_executable(OCL_Tests
+        utils/triangles_utils.cpp
         main.cpp
         geo/test_point.cpp
         cutters/test_cylcutter.cpp

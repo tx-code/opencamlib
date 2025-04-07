@@ -4,6 +4,7 @@
 #include "geo/clpoint.hpp"
 #include "geo/stlsurf.hpp"
 #include "geo/triangle.hpp"
+#include "../utils/triangles_utils.h"
 
 
 using namespace ocl;
@@ -173,4 +174,40 @@ TEST(CuttersTests, BallCutterCubeModel)
     EXPECT_FALSE(hit3);
     EXPECT_DOUBLE_EQ(cl3.z, -20.0);     // 不变
     EXPECT_EQ(cl3.getCC().type, NONE);  // 没有接触点
+}
+
+TEST(CuttersTests, BallCutterRandomPoints)
+{
+    // 创建一个非水平三角形用于测试
+    Point p1(0, 0, 0);
+    Point p2(10, 0, 5);
+    Point p3(0, 10, 8);
+    Triangle triangle(p1, p2, p3);
+
+    // 创建球形铣刀
+    double diameter = 6.0;
+    double length = 20.0;
+    BallCutter cutter(diameter, length);
+
+    // 在三角形内随机生成1000个点，排除顶点和边上的点
+    const size_t num_points = 1000;
+    std::vector<Point> random_points = createRandomPointsInTriangle(triangle, num_points, true, true);
+    
+    // 确认生成了正确数量的点
+    EXPECT_EQ(random_points.size(), num_points);
+    
+    // 对每个随机点执行dropCutter测试
+    for (const auto& point : random_points) {
+        CLPoint cl(point.x, point.y, -20);  // 从下方接近
+        bool hit = cutter.dropCutter(cl, triangle);
+        
+        // 应该都能检测到碰撞
+        EXPECT_TRUE(hit) << "Point (" << point.x << ", " << point.y << ", " << point.z << ") Unhit";
+        
+        // cl的z值应该被更新
+        EXPECT_GT(cl.z, -20.0) << "Point (" << point.x << ", " << point.y << ", " << point.z << ") z value not updated";
+        
+        // 接触类型不应该是NONE
+        EXPECT_NE(cl.getCC().type, NONE) << "Point (" << point.x << ", " << point.y << ", " << point.z << ") contact type is NONE";
+    }
 }
