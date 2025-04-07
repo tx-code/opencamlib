@@ -42,19 +42,24 @@ TEST(CuttersTests, BullCutterHorizontalTriangle)
     CLPoint cl1(5, 5, -10);
     bool hit1 = cutter.dropCutter(cl1, triangle);
     EXPECT_TRUE(hit1);
-    EXPECT_DOUBLE_EQ(cl1.z, 0);  // 底部圆盘接触
+    EXPECT_DOUBLE_EQ(cl1.z, 0);          // 底部圆盘接触
+    EXPECT_EQ(cl1.getCC().type, EDGE);  // 接触类型应为EDGE
 
     // 位置2：三角形外但在刀具半径内
     CLPoint cl2(-1, -1, -10);
     bool hit2 = cutter.dropCutter(cl2, triangle);
     EXPECT_TRUE(hit2);
     EXPECT_DOUBLE_EQ(cl2.z, 0);
+    // 接触类型取决于接触点的位置，可能是VERTEX或FACET
+    auto cc2 = cl2.getCC();
+    EXPECT_TRUE(cc2.type == VERTEX || cc2.type == FACET);
 
     // 位置3：远离三角形（不应该碰撞）
     CLPoint cl3(-10, -10, -10);
     bool hit3 = cutter.dropCutter(cl3, triangle);
     EXPECT_FALSE(hit3);
-    EXPECT_DOUBLE_EQ(cl3.z, -10.0);  // z应保持不变
+    EXPECT_DOUBLE_EQ(cl3.z, -10.0);     // z应保持不变
+    EXPECT_EQ(cl3.getCC().type, NONE);  // 没有接触点
 }
 
 TEST(CuttersTests, BullCutterVerticalTriangle)
@@ -80,7 +85,7 @@ TEST(CuttersTests, BullCutterVerticalTriangle)
     EXPECT_DOUBLE_EQ(cl.z, 5 - corner_radius);
 
     // 测试接触点
-    EXPECT_EQ(cl.getCC().type, EDGE);
+    EXPECT_EQ(cl.getCC().type, EDGE);  // 应该是边缘接触
 }
 
 TEST(CuttersTests, BullCutterEdgeCase)
@@ -109,7 +114,7 @@ TEST(CuttersTests, BullCutterEdgeCase)
     // 检查接触点类型是否为EDGE
     // 注意：根据接触点的具体位置，类型可能是EDGE或EDGE_SHAFT
     // 这里假设接触发生在圆角部分
-    EXPECT_TRUE(cl.getCC().type == EDGE || cl.getCC().type == EDGE_SHAFT);
+    EXPECT_TRUE(cl.getCC().type == EDGE || cl.getCC().type == EDGE_SHAFT);  // 应该是边缘接触
 }
 
 TEST(CuttersTests, BullCutterCubeModel)
@@ -153,7 +158,8 @@ TEST(CuttersTests, BullCutterCubeModel)
     CLPoint cl1(5, 5, -20);
     bool hit1 = cutter.dropCutterSTL(cl1, cube);
     EXPECT_TRUE(hit1);
-    EXPECT_DOUBLE_EQ(cl1.z, 10.0);  // 应该接触顶面在z=10-corner_radius
+    EXPECT_DOUBLE_EQ(cl1.z, 10.0);
+    EXPECT_EQ(cl1.getCC().type, EDGE);  // 接触类型应为EDGE
 
     // 2. 立方体边缘上方
     CLPoint cl2(0, 5, -20);
@@ -161,10 +167,12 @@ TEST(CuttersTests, BullCutterCubeModel)
     EXPECT_TRUE(hit2);
     // 应该接触顶面，但因为是边缘，所以高度可能会受到影响
     EXPECT_LE(cl2.z, 10.0);
+    EXPECT_TRUE(cl2.getCC().type == FACET || cl2.getCC().type == EDGE);  // 接触类型应为FACET或EDGE
 
     // 3. 立方体外部
     CLPoint cl3(-10, -10, -20);
     bool hit3 = cutter.dropCutterSTL(cl3, cube);
     EXPECT_FALSE(hit3);
-    EXPECT_DOUBLE_EQ(cl3.z, -20.0);  // 不变
+    EXPECT_DOUBLE_EQ(cl3.z, -20.0);     // 不变
+    EXPECT_EQ(cl3.getCC().type, NONE);  // 没有接触点
 }

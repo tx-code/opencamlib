@@ -41,6 +41,7 @@ TEST(CuttersTests, BallCutterHorizontalTriangle)
     EXPECT_TRUE(hit1);
     // 球形铣刀的CL点位于半球面顶点
     EXPECT_DOUBLE_EQ(cl1.z, 0);
+    EXPECT_EQ(cl1.getCC().type, EDGE);  // 接触类型应为EDGE
 
     // 位置2：三角形外但在刀具半径内（应该仍然在z=-radius接触）
     CLPoint cl2(-1, -1, -1e6);
@@ -51,12 +52,14 @@ TEST(CuttersTests, BallCutterHorizontalTriangle)
     EXPECT_DOUBLE_EQ(cc2.x, 0);
     EXPECT_DOUBLE_EQ(cc2.y, 0);
     EXPECT_DOUBLE_EQ(cc2.z, 0);
+    EXPECT_EQ(cc2.type, VERTEX);  // 此处接触点为顶点
 
     // 位置3：远离三角形（不应该碰撞）
     CLPoint cl3(-10, -10, -1e6);
     bool hit3 = cutter.dropCutter(cl3, triangle);
     EXPECT_FALSE(hit3);
-    EXPECT_DOUBLE_EQ(cl3.z, -1e6);  // z应保持不变
+    EXPECT_DOUBLE_EQ(cl3.z, -1e6);      // z应保持不变
+    EXPECT_EQ(cl3.getCC().type, NONE);  // 没有接触点
 }
 
 TEST(CuttersTests, BallCutterVerticalTriangle)
@@ -83,7 +86,7 @@ TEST(CuttersTests, BallCutterVerticalTriangle)
     EXPECT_DOUBLE_EQ(cl.z, 2);
 
     // 测试接触点
-    EXPECT_EQ(cl.getCC().type, EDGE);
+    EXPECT_EQ(cl.getCC().type, EDGE);  // 应该是边缘接触
 }
 
 TEST(CuttersTests, BallCutterEdgeCase)
@@ -109,7 +112,7 @@ TEST(CuttersTests, BallCutterEdgeCase)
     EXPECT_DOUBLE_EQ(cl.z, -radius);
 
     // 检查接触点类型应该是EDGE
-    EXPECT_EQ(cl.getCC().type, EDGE);
+    EXPECT_EQ(cl.getCC().type, EDGE);  // 应该是边缘接触
 }
 
 TEST(CuttersTests, BallCutterCubeModel)
@@ -153,7 +156,8 @@ TEST(CuttersTests, BallCutterCubeModel)
     CLPoint cl1(5, 5, -20);
     bool hit1 = cutter.dropCutterSTL(cl1, cube);
     EXPECT_TRUE(hit1);
-    EXPECT_DOUBLE_EQ(cl1.z, 10.0);  // 应该接触顶面在z=10-radius
+    EXPECT_DOUBLE_EQ(cl1.z, 10.0);       // 应该接触顶面在z=10-radius
+    EXPECT_EQ(cl1.getCC().type, EDGE);  // 接触类型应为EDGE
 
     // 2. 立方体边缘上方
     CLPoint cl2(0, 5, -20);
@@ -161,10 +165,12 @@ TEST(CuttersTests, BallCutterCubeModel)
     EXPECT_TRUE(hit2);
     // 应该接触顶面，但因为是边缘，所以高度可能会受到影响
     EXPECT_LE(cl2.z, 10.0);
+    EXPECT_TRUE(cl2.getCC().type == FACET || cl2.getCC().type == EDGE);  // 接触类型应为FACET或EDGE
 
     // 3. 立方体外部
     CLPoint cl3(-10, -10, -20);
     bool hit3 = cutter.dropCutterSTL(cl3, cube);
     EXPECT_FALSE(hit3);
-    EXPECT_DOUBLE_EQ(cl3.z, -20.0);  // 不变
+    EXPECT_DOUBLE_EQ(cl3.z, -20.0);     // 不变
+    EXPECT_EQ(cl3.getCC().type, NONE);  // 没有接触点
 }

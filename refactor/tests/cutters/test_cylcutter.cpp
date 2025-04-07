@@ -39,20 +39,23 @@ TEST(CuttersTests, CylindricalCutterHorizontalTriangle)
     // 位置1: 铣刀正在三角形上方，应该在z=0处与平面接触
     CLPoint cl1(5, 5, -10);
     bool hit1 = cutter.dropCutter(cl1, triangle);
-    EXPECT_TRUE(hit1);             // 应该检测到碰撞
-    EXPECT_DOUBLE_EQ(cl1.z, 0.0);  // 底部接触平面z=0
+    EXPECT_TRUE(hit1);                   // 应该检测到碰撞
+    EXPECT_DOUBLE_EQ(cl1.z, 0.0);        // 底部接触平面z=0
+    EXPECT_EQ(cl1.getCC().type, EDGE);  // 接触类型应为EDGE
 
     // 位置2: 铣刀在三角形外但仍在其半径范围内，仍应该在z=0处接触
     CLPoint cl2(-1, -1, -10);
     bool hit2 = cutter.dropCutter(cl2, triangle);
-    EXPECT_TRUE(hit2);             // 应该检测到碰撞
-    EXPECT_DOUBLE_EQ(cl2.z, 0.0);  // 底部接触平面z=0
+    EXPECT_TRUE(hit2);                   // 应该检测到碰撞
+    EXPECT_DOUBLE_EQ(cl2.z, 0.0);        // 底部接触平面z=0
+    EXPECT_EQ(cl2.getCC().type, VERTEX);  // 接触类型应为VERTEX
 
     // 位置3: 铣刀远离三角形，超出半径范围，不应该有碰撞
     CLPoint cl3(-10, -10, -10);
     bool hit3 = cutter.dropCutter(cl3, triangle);
-    EXPECT_FALSE(hit3);             // 应该没有碰撞
-    EXPECT_DOUBLE_EQ(cl3.z, -10.0);  // 位置不变，仍为初始z值
+    EXPECT_FALSE(hit3);                 // 应该没有碰撞
+    EXPECT_DOUBLE_EQ(cl3.z, -10.0);     // 位置不变，仍为初始z值
+    EXPECT_EQ(cl3.getCC().type, NONE);  // 没有接触点
 }
 
 TEST(CuttersTests, CylindricalCutterVericalTriangle)
@@ -72,8 +75,10 @@ TEST(CuttersTests, CylindricalCutterVericalTriangle)
     CLPoint cl(5, 3, -10);
     bool hit = cutter.dropCutter(cl, triangle);
     EXPECT_TRUE(hit);  // 应该检测到碰撞
-
     EXPECT_DOUBLE_EQ(cl.z, 5.0);
+
+    // 检查接触点类型，应该是边缘接触
+    EXPECT_EQ(cl.getCC().type, EDGE);  // 接触类型应为EDGE
 }
 
 TEST(CuttersTests, CylindricalCutterCubeModel)
@@ -115,18 +120,21 @@ TEST(CuttersTests, CylindricalCutterCubeModel)
     // 1. 立方体中心上方
     CLPoint cl1(5, 5, -20);
     bool hit1 = cutter.dropCutterSTL(cl1, cube);
-    EXPECT_TRUE(hit1);              // 应该有碰撞
-    EXPECT_DOUBLE_EQ(cl1.z, 10.0);  // 铣刀底部应该接触顶面z=10
+    EXPECT_TRUE(hit1);                   // 应该有碰撞
+    EXPECT_DOUBLE_EQ(cl1.z, 10.0);       // 铣刀底部应该接触顶面z=10
+    EXPECT_EQ(cl1.getCC().type, EDGE);  // 接触类型应为EDGE
 
     // 2. 立方体边缘上方
     CLPoint cl2(0, 5, -20);
     bool hit2 = cutter.dropCutterSTL(cl2, cube);
-    EXPECT_TRUE(hit2);              // 应该有碰撞
-    EXPECT_DOUBLE_EQ(cl2.z, 10.0);  // 铣刀底部应该接触顶面z=10
+    EXPECT_TRUE(hit2);                   // 应该有碰撞
+    EXPECT_DOUBLE_EQ(cl2.z, 10.0);       // 铣刀底部应该接触顶面z=10
+    EXPECT_EQ(cl2.getCC().type, EDGE);  // 接触类型应为EDGE
 
     // 3. 在立方体外部，超出铣刀半径范围
     CLPoint cl3(-10, -10, -20);
     bool hit3 = cutter.dropCutterSTL(cl3, cube);
-    EXPECT_FALSE(hit3);             // 应该没有碰撞
-    EXPECT_DOUBLE_EQ(cl3.z, -20.0);  // 位置不变，仍为初始z值
+    EXPECT_FALSE(hit3);                 // 应该没有碰撞
+    EXPECT_DOUBLE_EQ(cl3.z, -20.0);     // 位置不变，仍为初始z值
+    EXPECT_EQ(cl3.getCC().type, NONE);  // 没有接触点
 }

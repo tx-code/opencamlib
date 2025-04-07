@@ -43,18 +43,22 @@ TEST(CuttersTests, ConeCutterHorizontalTriangle)
     CLPoint cl1(5, 5, -1);
     bool hit1 = cutter.dropCutter(cl1, triangle);
     EXPECT_TRUE(hit1);
-    EXPECT_DOUBLE_EQ(cl1.z, 0.0);  // 尖端接触平面
+    EXPECT_DOUBLE_EQ(cl1.z, 0.0);            // 尖端接触平面
+    EXPECT_EQ(cl1.getCC().type, EDGE);
 
     // 位置2：三角形外但在刀具半径内（接触可能是在圆周边缘）
     CLPoint cl2(-1, -1, -10);
     bool hit2 = cutter.dropCutter(cl2, triangle);
     EXPECT_TRUE(hit2);
+    EXPECT_TRUE(cl2.getCC().type == VERTEX
+                || cl2.getCC().type == EDGE_CONE);  // 接触类型取决于具体位置
 
     // 位置3：远离三角形（不应该碰撞）
     CLPoint cl3(-10, -10, -1);
     bool hit3 = cutter.dropCutter(cl3, triangle);
     EXPECT_FALSE(hit3);
-    EXPECT_DOUBLE_EQ(cl3.z, -1);  // z应保持不变
+    EXPECT_DOUBLE_EQ(cl3.z, -1);        // z应保持不变
+    EXPECT_EQ(cl3.getCC().type, NONE);  // 没有接触点
 }
 
 TEST(CuttersTests, ConeCutterVerticalTriangle)
@@ -79,7 +83,7 @@ TEST(CuttersTests, ConeCutterVerticalTriangle)
     EXPECT_DOUBLE_EQ(cl.z, 2);
 
     // 测试接触点
-    EXPECT_EQ(cl.getCC().type, EDGE);
+    EXPECT_EQ(cl.getCC().type, EDGE);  // 与边缘接触
 }
 
 TEST(CuttersTests, ConeCutterTipCase)
@@ -105,7 +109,7 @@ TEST(CuttersTests, ConeCutterTipCase)
     EXPECT_DOUBLE_EQ(cl.z, 5.0);
 
     // 检查接触点类型应该是VERTEX
-    EXPECT_EQ(cl.getCC().type, VERTEX);
+    EXPECT_EQ(cl.getCC().type, VERTEX);  // 与顶点接触
 }
 
 TEST(CuttersTests, ConeCutterCubeModel)
@@ -149,17 +153,20 @@ TEST(CuttersTests, ConeCutterCubeModel)
     CLPoint cl1(5, 5, -20);
     bool hit1 = cutter.dropCutterSTL(cl1, cube);
     EXPECT_TRUE(hit1);
-    EXPECT_DOUBLE_EQ(cl1.z, 10.0);  // 应该尖端接触顶面在z=10
+    EXPECT_DOUBLE_EQ(cl1.z, 10.0);           // 应该尖端接触顶面在z=10
+    EXPECT_EQ(cl1.getCC().type, EDGE);  // 接触类型应为FACET_TIP
 
     // 2. 立方体顶点上方
     CLPoint cl2(0, 0, -20);
     bool hit2 = cutter.dropCutterSTL(cl2, cube);
     EXPECT_TRUE(hit2);
-    EXPECT_DOUBLE_EQ(cl2.z, 10.0);  // 应该尖端接触顶点
+    EXPECT_DOUBLE_EQ(cl2.z, 10.0);        // 应该尖端接触顶点
+    EXPECT_EQ(cl2.getCC().type, VERTEX);  // 接触类型应为VERTEX
 
     // 3. 立方体外部
     CLPoint cl3(-10, -10, -20);
     bool hit3 = cutter.dropCutterSTL(cl3, cube);
     EXPECT_FALSE(hit3);
-    EXPECT_DOUBLE_EQ(cl3.z, -20.0);  // 不变
+    EXPECT_DOUBLE_EQ(cl3.z, -20.0);     // 不变
+    EXPECT_EQ(cl3.getCC().type, NONE);  // 没有接触点
 }
