@@ -146,10 +146,10 @@ void UpdateCLPointCloudActor(vtkSmartPointer<vtkActor>& pointsActor,
 
             // Get the color for this CCType
             if (forCLPoints) {
-                GetCcColor(static_cast<ocl::CCType>(i), rgb);
+                GetClColor(static_cast<ocl::CCType>(i), rgb);
             }
             else {
-                GetClColor(static_cast<ocl::CCType>(i), rgb);
+                GetCcColor(static_cast<ocl::CCType>(i), rgb);
             }
 
             // 设置图例项

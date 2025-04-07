@@ -8,6 +8,28 @@
 #include <tbb/global_control.h>
 #include <tbb/info.h>
 
+namespace
+{
+void printStats(const std::vector<ocl::CLPoint>& points)
+{
+    spdlog::info("Statistics of the points:");
+    std::array<double, ocl::CCType::CCTYPE_ERROR + 1> stats = {0};
+    for (const auto& point : points) {
+        const auto& cc = point.cc.load();
+        stats[static_cast<int>(cc->type)]++;
+    }
+    for (int i = 0; i <= ocl::CCType::CCTYPE_ERROR; i++) {
+        if (stats[i] > 0) {
+            spdlog::info("{}: {}/{}, {:.2f}%",
+                         ocl::CCType2String(static_cast<ocl::CCType>(i)),
+                         stats[i],
+                         points.size(),
+                         stats[i] / points.size() * 100);
+        }
+    }
+}
+}  // namespace
+
 
 ocl::Path createGuidePath(const ocl::STLSurf& surface)
 {
@@ -195,6 +217,8 @@ void pathDropCutter(CAMModelManager& model, vtkActorManager& actorManager, doubl
     pdc.run();
     auto points = pdc.getPoints();
     spdlog::info("PDC done in {} s and got {} points", sw, points.size());
+    // print the statistics of the points
+    printStats(points);
 
     UpdateCLPointCloudActor(actorManager.operationActor, actorManager.legendActor, points);
     if (actorManager.operationActor) {
@@ -241,6 +265,9 @@ void randomBatchDropCutter(CAMModelManager& model,
     auto points = bdc.getCLPoints();
     spdlog::info("RBD done in {} s and got {} points", sw, points.size());
 
+    // print the statistics of the points
+    printStats(points);
+
     UpdateCLPointCloudActor(actorManager.operationActor, actorManager.legendActor, points);
     if (actorManager.operationActor) {
         actorManager.operationActor->SetObjectName("Random Batch Drop Cutter");
@@ -273,6 +300,9 @@ void adaptivePathDropCutter(CAMModelManager& model,
     apdc.run();
     auto points = apdc.getPoints();
     spdlog::info("APDC done in {} s and got {} points", sw, points.size());
+
+    // print the statistics of the points
+    printStats(points);
 
     UpdateCLPointCloudActor(actorManager.operationActor, actorManager.legendActor, points);
     if (actorManager.operationActor) {
