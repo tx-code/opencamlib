@@ -150,7 +150,7 @@ public:
 };
 
 /// scalar multiplication   scalar*Point
-const Point operator*(const double &a, const Point &p);
+const OCL_API Point operator*(const double &a, const Point &p);
 
 } // namespace ocl
 #endif
