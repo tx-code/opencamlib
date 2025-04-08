@@ -1,10 +1,11 @@
 #include <gtest/gtest.h>
 
+#include "../utils/triangles_utils.h"
 #include "cutters/bullcutter.hpp"
 #include "geo/clpoint.hpp"
 #include "geo/stlsurf.hpp"
 #include "geo/triangle.hpp"
-#include "../utils/triangles_utils.h"
+
 
 
 using namespace ocl;
@@ -43,7 +44,7 @@ TEST(CuttersTests, BullCutterHorizontalTriangle)
     CLPoint cl1(5, 5, -10);
     bool hit1 = cutter.dropCutter(cl1, triangle);
     EXPECT_TRUE(hit1);
-    EXPECT_DOUBLE_EQ(cl1.z, 0);          // 底部圆盘接触
+    EXPECT_DOUBLE_EQ(cl1.z, 0);         // 底部圆盘接触
     EXPECT_EQ(cl1.getCC().type, EDGE);  // 接触类型应为EDGE
 
     // 位置2：三角形外但在刀具半径内
@@ -194,23 +195,27 @@ TEST(CuttersTests, BullCutterRandomPoints)
 
     // 在三角形内随机生成1000个点，排除顶点和边上的点
     const size_t num_points = 1000;
-    std::vector<Point> random_points = createRandomPointsInTriangle(triangle, num_points, true, true);
-    
+    std::vector<Point> random_points =
+        createRandomPointsInTriangle(triangle, num_points, true, true);
+
     // 确认生成了正确数量的点
     EXPECT_EQ(random_points.size(), num_points);
-    
+
     // 对每个随机点执行dropCutter测试
     for (const auto& point : random_points) {
         CLPoint cl(point.x, point.y, -20);  // 从下方接近
         bool hit = cutter.dropCutter(cl, triangle);
-        
+
         // 应该都能检测到碰撞
-        EXPECT_TRUE(hit) << "Point (" << point.x << ", " << point.y << ", " << point.z << ") not hit";
-        
+        EXPECT_TRUE(hit) << "Point (" << point.x << ", " << point.y << ", " << point.z
+                         << ") not hit";
+
         // cl的z值应该被更新
-        EXPECT_GT(cl.z, -20.0) << "Point (" << point.x << ", " << point.y << ", " << point.z << ") z value not updated";
-        
+        EXPECT_GT(cl.z, -20.0) << "Point (" << point.x << ", " << point.y << ", " << point.z
+                               << ") z value not updated";
+
         // 接触类型不应该是NONE
-        EXPECT_NE(cl.getCC().type, NONE) << "Point (" << point.x << ", " << point.y << ", " << point.z << ") contact type is NONE";
+        EXPECT_NE(cl.getCC().type, NONE) << "Point (" << point.x << ", " << point.y << ", "
+                                         << point.z << ") contact type is NONE";
     }
 }

@@ -1,10 +1,11 @@
 #include <gtest/gtest.h>
 
+#include "../utils/triangles_utils.h"
 #include "cutters/cylcutter.hpp"
 #include "geo/clpoint.hpp"
 #include "geo/stlsurf.hpp"
 #include "geo/triangle.hpp"
-#include "../utils/triangles_utils.h"
+
 
 
 using namespace ocl;
@@ -40,15 +41,15 @@ TEST(CuttersTests, CylindricalCutterHorizontalTriangle)
     // 位置1: 铣刀正在三角形上方，应该在z=0处与平面接触
     CLPoint cl1(5, 5, -10);
     bool hit1 = cutter.dropCutter(cl1, triangle);
-    EXPECT_TRUE(hit1);                   // 应该检测到碰撞
-    EXPECT_DOUBLE_EQ(cl1.z, 0.0);        // 底部接触平面z=0
+    EXPECT_TRUE(hit1);                  // 应该检测到碰撞
+    EXPECT_DOUBLE_EQ(cl1.z, 0.0);       // 底部接触平面z=0
     EXPECT_EQ(cl1.getCC().type, EDGE);  // 接触类型应为EDGE
 
     // 位置2: 铣刀在三角形外但仍在其半径范围内，仍应该在z=0处接触
     CLPoint cl2(-1, -1, -10);
     bool hit2 = cutter.dropCutter(cl2, triangle);
-    EXPECT_TRUE(hit2);                   // 应该检测到碰撞
-    EXPECT_DOUBLE_EQ(cl2.z, 0.0);        // 底部接触平面z=0
+    EXPECT_TRUE(hit2);                    // 应该检测到碰撞
+    EXPECT_DOUBLE_EQ(cl2.z, 0.0);         // 底部接触平面z=0
     EXPECT_EQ(cl2.getCC().type, VERTEX);  // 接触类型应为VERTEX
 
     // 位置3: 铣刀远离三角形，超出半径范围，不应该有碰撞
@@ -121,15 +122,15 @@ TEST(CuttersTests, CylindricalCutterCubeModel)
     // 1. 立方体中心上方
     CLPoint cl1(5, 5, -20);
     bool hit1 = cutter.dropCutterSTL(cl1, cube);
-    EXPECT_TRUE(hit1);                   // 应该有碰撞
-    EXPECT_DOUBLE_EQ(cl1.z, 10.0);       // 铣刀底部应该接触顶面z=10
+    EXPECT_TRUE(hit1);                  // 应该有碰撞
+    EXPECT_DOUBLE_EQ(cl1.z, 10.0);      // 铣刀底部应该接触顶面z=10
     EXPECT_EQ(cl1.getCC().type, EDGE);  // 接触类型应为EDGE
 
     // 2. 立方体边缘上方
     CLPoint cl2(0, 5, -20);
     bool hit2 = cutter.dropCutterSTL(cl2, cube);
-    EXPECT_TRUE(hit2);                   // 应该有碰撞
-    EXPECT_DOUBLE_EQ(cl2.z, 10.0);       // 铣刀底部应该接触顶面z=10
+    EXPECT_TRUE(hit2);                  // 应该有碰撞
+    EXPECT_DOUBLE_EQ(cl2.z, 10.0);      // 铣刀底部应该接触顶面z=10
     EXPECT_EQ(cl2.getCC().type, EDGE);  // 接触类型应为EDGE
 
     // 3. 在立方体外部，超出铣刀半径范围
@@ -155,23 +156,27 @@ TEST(CuttersTests, CylindricalCutterRandomPoints)
 
     // 在三角形内随机生成1000个点，排除顶点和边上的点
     const size_t num_points = 1000;
-    std::vector<Point> random_points = createRandomPointsInTriangle(triangle, num_points, true, true);
-    
+    std::vector<Point> random_points =
+        createRandomPointsInTriangle(triangle, num_points, true, true);
+
     // 确认生成了正确数量的点
     EXPECT_EQ(random_points.size(), num_points);
-    
+
     // 对每个随机点执行dropCutter测试
     for (const auto& point : random_points) {
         CLPoint cl(point.x, point.y, -20);  // 从下方接近
         bool hit = cutter.dropCutter(cl, triangle);
-        
+
         // 应该都能检测到碰撞
-        EXPECT_TRUE(hit) << "Point (" << point.x << ", " << point.y << ", " << point.z << ") not hit";
-        
+        EXPECT_TRUE(hit) << "Point (" << point.x << ", " << point.y << ", " << point.z
+                         << ") not hit";
+
         // cl的z值应该被更新
-        EXPECT_GT(cl.z, -20.0) << "Point (" << point.x << ", " << point.y << ", " << point.z << ") z value not updated";
-        
+        EXPECT_GT(cl.z, -20.0) << "Point (" << point.x << ", " << point.y << ", " << point.z
+                               << ") z value not updated";
+
         // 接触类型不应该是NONE
-        EXPECT_NE(cl.getCC().type, NONE) << "Point (" << point.x << ", " << point.y << ", " << point.z << ") contact type is NONE";
+        EXPECT_NE(cl.getCC().type, NONE) << "Point (" << point.x << ", " << point.y << ", "
+                                         << point.z << ") contact type is NONE";
     }
 }
