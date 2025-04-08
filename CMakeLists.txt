@@ -57,6 +57,9 @@ if(CCACHE_PROGRAM)
     message(STATUS "Using ccache: ${CCACHE_PROGRAM}")
 endif()
 
+# Clangd need this
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 # Common 3rd party libraries
 find_package(libigl CONFIG REQUIRED)
 find_package(CGAL REQUIRED) # Although the CGAL is linked with the libigl, we explicitly find it here to avoid the conflict.
