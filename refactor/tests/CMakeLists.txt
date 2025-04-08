@@ -1,8 +1,8 @@
-﻿enable_testing()
+﻿include(CTest)
+enable_testing()
 
 find_package(GTest CONFIG REQUIRED)
 
-include(GoogleTest)
 
 # 设置STL模型文件的路径
 set(STL_MODELS_DIR "${CMAKE_SOURCE_DIR}/stl" CACHE PATH "Path to STL model files for testing")
@@ -31,4 +31,5 @@ target_link_libraries(OCL_Tests
         GTest::gmock_main
 )
 
-add_test(AllTestsInMain OCL_Tests)
+include(GoogleTest)
+gtest_discover_tests(OCL_Tests)
