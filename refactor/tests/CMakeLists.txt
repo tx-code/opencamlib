@@ -12,7 +12,8 @@ add_executable(OCL_Tests
         cutters/test_ballcutter.cpp
         cutters/test_bullcutter.cpp
         cutters/test_conecutter.cpp
-        cutters/test_pushcutter.cpp)
+        cutters/test_pushcutter.cpp
+        cutters/test_fiberpushcutter.cpp)
 
 target_link_libraries(OCL_Tests
         ocl
