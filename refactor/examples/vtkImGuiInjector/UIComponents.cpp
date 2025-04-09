@@ -40,7 +40,7 @@ static int g_debugCurrentPointIndex = 0;
 static bool g_showDebugWindow = false;      // 控制调试窗口显示
 static bool g_showCutterWindow = false;     // 控制刀具窗口显示
 static bool g_showOperationWindow = false;  // 控制操作窗口显示
-static bool g_showPrimitiveWindow = true;   // 控制原始几何体窗口显示
+static bool g_showPrimitiveWindow = false;   // 控制原始几何体窗口显示
 
 void UIComponents::DrawLoadStlUI(vtkDearImGuiInjector* injector)
 {
@@ -871,6 +871,7 @@ void UIComponents::DrawCAMExample(vtkDearImGuiInjector* injector)
     auto& actorManager = injector->ActorManager;
 
     if (ImGui::BeginMenu("OCL Operations")) {
+        ImGui::MenuItem("Create Primitive", nullptr, &g_showPrimitiveWindow);
         DrawLoadStlUI(injector);
         ImGui::MenuItem("Add Cutter", nullptr, &g_showCutterWindow);
         ImGui::MenuItem("Add Operation", nullptr, &g_showOperationWindow);
@@ -1180,7 +1181,7 @@ void UIComponents::DrawPrimitiveUI(vtkDearImGuiInjector* injector)
                     ImGui::TableSetColumnIndex(2);
                     ImGui::Text("(%.3f, %.3f, %.3f)", it->p[2].x, it->p[2].y, it->p[2].z);
                     ImGui::TableSetColumnIndex(3);
-                    ImGui::PushID(it.operator->());
+                    ImGui::PushID(it._Ptr);
                     if (ImGui::SmallButton("Del")) {
                         it = custom_triangles.erase(it);
                     }
