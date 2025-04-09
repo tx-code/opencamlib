@@ -64,6 +64,7 @@ struct CAMModelManager
     void createSphere(float radius, int count = 50);
     void createEllipsoid(float radius1, float radius2, int count = 50);
     void createTorus(float radius1, float radius2, int count = 50);
+    void createCustomTriangles(const std::list<ocl::Triangle>& triangles);
 };
 
 void hello_ocl();

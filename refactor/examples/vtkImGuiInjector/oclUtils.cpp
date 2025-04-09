@@ -368,6 +368,20 @@ void CAMModelManager::createTorus(float radius1, float radius2, int count)
                  count);
 }
 
+void CAMModelManager::createCustomTriangles(const std::list<ocl::Triangle>& triangles)
+{
+    stlFilePath.clear();
+    surface = std::make_unique<ocl::STLSurf>();
+
+    for (const auto& tri : triangles) {
+        surface->addTriangle(tri.p[0], tri.p[1], tri.p[2]);
+    }
+
+    rebuildAABBTree();
+    spdlog::info("Created custom triangles with {} triangles", triangles.size());
+}
+
+
 ocl::Path createGuidePath(const ocl::STLSurf& surface)
 {
     // Enlarge 5%

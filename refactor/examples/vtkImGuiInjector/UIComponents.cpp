@@ -6,6 +6,7 @@
 #include "RecentFilesManager.h"
 #include "STLSurfUtils.h"
 #include "SettingsManager.h"
+#include "geo/triangle.hpp"
 #include "oclBenchmark.h"
 #include "oclUtils.h"
 #include "vtkCutters.h"
@@ -1068,6 +1069,9 @@ void UIComponents::DrawPrimitiveUI(vtkDearImGuiInjector* injector)
     static float torus_major_radius = 5.0f;
     static float torus_minor_radius = 2.0f;
 
+    static std::list<Triangle> custom_triangles {
+        Triangle {Point {0, 0, 0}, Point {10, 0, 0}, Point {0, 10, 0}}};
+
     // 根据选择的基本几何体类型显示对应的参数控件
     switch (primitive_type) {
         case 0:  // Cube
@@ -1154,10 +1158,77 @@ void UIComponents::DrawPrimitiveUI(vtkDearImGuiInjector* injector)
             break;
 
         case 6:  // CustomTriangles
-            if (ImGui::Button("Create CustomTriangles")) {
-                // 自定义三角形创建逻辑
+            // Use table to show custom triangles
+            static ImGuiTableFlags flags =
+                ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders | ImGuiTableFlags_ContextMenuInBody;
+            if (custom_triangles.size() > 10) {
+                flags |= ImGuiTableFlags_ScrollY;
             }
+            if (ImGui::BeginTable("Triangles", 4, flags)) {
+                ImGui::TableSetupColumn("P0");
+                ImGui::TableSetupColumn("P1");
+                ImGui::TableSetupColumn("P2");
+                ImGui::TableSetupColumn("Delete");
+                ImGui::TableHeadersRow();
+
+                for (auto it = custom_triangles.begin(); it != custom_triangles.end();) {
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0);
+                    ImGui::Text("(%.3f, %.3f, %.3f)", it->p[0].x, it->p[0].y, it->p[0].z);
+                    ImGui::TableSetColumnIndex(1);
+                    ImGui::Text("(%.3f, %.3f, %.3f)", it->p[1].x, it->p[1].y, it->p[1].z);
+                    ImGui::TableSetColumnIndex(2);
+                    ImGui::Text("(%.3f, %.3f, %.3f)", it->p[2].x, it->p[2].y, it->p[2].z);
+                    ImGui::TableSetColumnIndex(3);
+                    ImGui::PushID(it.operator->());
+                    if (ImGui::SmallButton("Del")) {
+                        it = custom_triangles.erase(it);
+                    }
+                    else {
+                        ++it;
+                    }
+                    ImGui::PopID();
+                }
+                ImGui::EndTable();
+            }
+
+            if (ImGui::Button("Add")) {
+                // popup a dialog to input the points
+                ImGui::OpenPopup("Add Custom Triangle");
+            }
+            ImGui::SameLine();
+            ImGui::BeginDisabled(custom_triangles.empty());
+            if (ImGui::Button("Empty")) {
+                custom_triangles.clear();
+            }
+            if (ImGui::Button("Create CustomTriangles")) {
+                modelManager.createCustomTriangles(custom_triangles);
+                UpdateStlSurfActor(actorManager.modelActor, *modelManager.surface);
+            }
+            ImGui::EndDisabled();
             break;
+    }
+
+    if (ImGui::BeginPopupModal("Add Custom Triangle", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        static float p0[3] = {0, 0, 0};
+        static float p1[3] = {0, 0, 0};
+        static float p2[3] = {0, 0, 0};
+
+        ImGui::DragFloat3("P0", p0, 1.0f, -1e6f, 1e6f, "%.3f");
+        ImGui::DragFloat3("P1", p1, 1.0f, -1e6f, 1e6f, "%.3f");
+        ImGui::DragFloat3("P2", p2, 1.0f, -1e6f, 1e6f, "%.3f");
+
+        if (ImGui::Button("OK")) {
+            custom_triangles.emplace_back(ocl::Point(p0[0], p0[1], p0[2]),
+                                          ocl::Point(p1[0], p1[1], p1[2]),
+                                          ocl::Point(p2[0], p2[1], p2[2]));
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Cancel")) {
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
     }
 
     ImGui::End();
