@@ -390,6 +390,7 @@ void UIComponents::DrawDataModelUI(vtkDearImGuiInjector* injector)
             }
 
             if (ImGui::BeginMenu("Advanced")) {
+                ImGui::SeparatorText("Perturbation");
                 // Random Perturbation
                 static double max_move_distance = 0.01;
                 ImGui::InputDouble("Max Move Distance", &max_move_distance, 0.01f, 1.0f, "%.3f");
@@ -400,12 +401,15 @@ void UIComponents::DrawDataModelUI(vtkDearImGuiInjector* injector)
                     modelManager.rebuildAABBTree();
                 }
 
+                ImGui::SeparatorText("Subdivision");
                 if (ImGui::Button("Subdivision once")) {
                     SubdivideSurface(*modelManager.surface);
                     UpdateStlSurfActor(actorManager.modelActor, *modelManager.surface);
                     // 重建AABBTree
                     modelManager.rebuildAABBTree();
                 }
+
+                ImGui::SeparatorText("Tree");
                 static int treeType = 0;
                 static bool showTree = false;
                 static bool onlyLeafNodes = false;
@@ -444,6 +448,7 @@ void UIComponents::DrawDataModelUI(vtkDearImGuiInjector* injector)
                     actorManager.treeActor->VisibilityOff();
                 }
 
+                ImGui::SeparatorText("Sample Points");
                 static bool showSamplePoints = false;
                 static int number_points = 1e4;
                 ImGui::DragInt("Number of Sample Points", &number_points, 10.f, 100, 1e7);
