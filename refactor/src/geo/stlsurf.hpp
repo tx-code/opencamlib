@@ -42,6 +42,8 @@ public:
   STLSurf(){};
   /// destructor
   virtual ~STLSurf(){};
+  /// add Triangle with 3 points
+  void addTriangle(const Point &p1, const Point &p2, const Point &p3);
   /// add Triangle t to this surface
   void addTriangle(const Triangle &t);
   /// return number of triangles in surface

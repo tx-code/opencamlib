@@ -10,6 +10,7 @@
 #include "oclUtils.h"
 #include "vtkCutters.h"
 #include "vtkDearImGuiInjector.h"
+#include "vtkUtils.h"
 
 
 #include <CGAL/Memory_sizer.h>
@@ -38,6 +39,7 @@ static int g_debugCurrentPointIndex = 0;
 static bool g_showDebugWindow = false;      // 控制调试窗口显示
 static bool g_showCutterWindow = false;     // 控制刀具窗口显示
 static bool g_showOperationWindow = false;  // 控制操作窗口显示
+static bool g_showPrimitiveWindow = true;   // 控制原始几何体窗口显示
 
 void UIComponents::DrawLoadStlUI(vtkDearImGuiInjector* injector)
 {
@@ -919,6 +921,7 @@ void UIComponents::DrawCAMExample(vtkDearImGuiInjector* injector)
     DrawCutterUI(injector);
     DrawOperationUI(injector);
     DrawDebugDropCutterWindow(injector);
+    DrawPrimitiveUI(injector);
 }
 
 void UIComponents::DrawDebugDropCutterWindow(vtkDearImGuiInjector* injector)
@@ -1018,4 +1021,145 @@ void UIComponents::DrawDebugDropCutterWindow(vtkDearImGuiInjector* injector)
     ImGui::End();
 }
 
+void UIComponents::DrawPrimitiveUI(vtkDearImGuiInjector* injector)
+{
+    if (!g_showPrimitiveWindow) {
+        return;
+    }
+
+    auto& modelManager = injector->ModelManager;
+    auto& actorManager = injector->ActorManager;
+
+    ImGui::Begin("Primitive Geometry", &g_showPrimitiveWindow, ImGuiWindowFlags_AlwaysAutoResize);
+
+    // 使用静态变量保存选择的几何体类型
+    static const char* primitive_types[] =
+        {"Cube", "Sphere", "Cylinder", "Cone", "Ellipsoid", "Torus", "CustomTriangles"};
+    static int primitive_type = 0;
+
+    // 创建下拉菜单
+    ImGui::Combo("Primitive Type", &primitive_type, primitive_types, IM_ARRAYSIZE(primitive_types));
+
+    ImGui::Separator();
+
+    // 通用参数
+    static int sampling = 50;
+    static bool closed = true;
+
+    // 各个几何体的特定参数
+    static float cube_length = 10.0f;
+    static float cube_width = 10.0f;
+    static float cube_height = 10.0f;
+
+    static float sphere_radius = 5.0f;
+
+    static float cylinder_diameter = 4.0f;
+    static float cylinder_height = 10.0f;
+    static float cylinder_edge_length = 1.0f;
+
+    static float cone_diameter1 = 4.0f;
+    static float cone_diameter2 = 0.0f;
+    static float cone_height = 10.0f;
+    static float cone_edge_length = 1.0f;
+
+    static float ellipsoid_radius1 = 5.0f;
+    static float ellipsoid_radius2 = 3.0f;
+
+    static float torus_major_radius = 5.0f;
+    static float torus_minor_radius = 2.0f;
+
+    // 根据选择的基本几何体类型显示对应的参数控件
+    switch (primitive_type) {
+        case 0:  // Cube
+            ImGui::DragFloat("Length", &cube_length, 1.0f, 0.01f, 1e6f, "%.3f");
+            ImGui::DragFloat("Width", &cube_width, 1.0f, 0.01f, 1e6f, "%.3f");
+            ImGui::DragFloat("Height", &cube_height, 1.0f, 0.01f, 1e6f, "%.3f");
+
+            if (ImGui::Button("Create Cube")) {
+                modelManager.createCube(cube_length, cube_width, cube_height);
+                UpdateStlSurfActor(actorManager.modelActor, *modelManager.surface);
+            }
+            break;
+
+        case 1:  // Sphere
+            ImGui::DragFloat("Radius", &sphere_radius, 1.0f, 0.01f, 1e6f, "%.3f");
+            ImGui::Separator();
+            ImGui::DragInt("Sampling", &sampling, 1, 1, 1000);
+
+            if (ImGui::Button("Create Sphere")) {
+                modelManager.createSphere(sphere_radius, sampling);
+                UpdateStlSurfActor(actorManager.modelActor, *modelManager.surface);
+            }
+            break;
+
+        case 2:  // Cylinder
+            ImGui::DragFloat("Diameter", &cylinder_diameter, 1.0f, 0.01f, 1e6f, "%.3f");
+            ImGui::DragFloat("Height", &cylinder_height, 1.0f, 0.01f, 1e6f, "%.3f");
+            ImGui::Separator();
+            ImGui::DragFloat("Edge Length", &cylinder_edge_length, 1.0f, 0.01f, 1e6f, "%.3f");
+            ImGui::DragInt("Sampling", &sampling, 1, 1, 1000);
+            ImGui::Separator();
+            ImGui::Checkbox("Closed", &closed);
+
+            if (ImGui::Button("Create Cylinder")) {
+                modelManager.createCylinder(cylinder_diameter, cylinder_height, sampling, closed);
+                UpdateStlSurfActor(actorManager.modelActor, *modelManager.surface);
+            }
+            break;
+
+        case 3:  // Cone
+            ImGui::DragFloat("Bottom Diameter", &cone_diameter1, 1.0f, 0.0f, 1e6f, "%.3f");
+            ImGui::DragFloat("Top Diameter", &cone_diameter2, 1.0f, 0.0f, 1e6f, "%.3f");
+            ImGui::Separator();
+            ImGui::DragFloat("Height", &cone_height, 1.0f, 0.01f, 1e6f, "%.3f");
+            ImGui::DragFloat("Edge Length", &cone_edge_length, 0.1f, 0.01f, 10.0f, "%.3f");
+            ImGui::Separator();
+            ImGui::DragInt("Sampling", &sampling, 1, 1, 1000);
+            ImGui::Separator();
+            ImGui::Checkbox("Closed", &closed);
+
+            if (ImGui::Button("Create Cone")) {
+                modelManager.createCone(cone_diameter1,
+                                        cone_diameter2,
+                                        cone_height,
+                                        cone_edge_length,
+                                        sampling,
+                                        closed);
+                UpdateStlSurfActor(actorManager.modelActor, *modelManager.surface);
+            }
+            break;
+
+        case 4:  // Ellipsoid
+            ImGui::DragFloat("Radius X/Y", &ellipsoid_radius1, 1.0f, 0.01f, 1e6f, "%.3f");
+            ImGui::DragFloat("Radius Z", &ellipsoid_radius2, 1.0f, 0.01f, 1e6f, "%.3f");
+            ImGui::Separator();
+            ImGui::DragInt("Sampling", &sampling, 1, 1, 1000);
+
+            if (ImGui::Button("Create Ellipsoid")) {
+                modelManager.createEllipsoid(ellipsoid_radius1, ellipsoid_radius2, sampling);
+                UpdateStlSurfActor(actorManager.modelActor, *modelManager.surface);
+            }
+            break;
+
+        case 5:  // Torus
+            ImGui::DragFloat("Major Radius", &torus_major_radius, 1.0f, 0.01f, 1e6f, "%.3f");
+            ImGui::DragFloat("Minor Radius", &torus_minor_radius, 1.0f, 0.01f, 1e6f, "%.3f");
+            ImGui::Separator();
+            ImGui::DragInt("Sampling", &sampling, 1, 1, 1000);
+
+            if (ImGui::Button("Create Torus")) {
+                modelManager.createTorus(torus_major_radius, torus_minor_radius, sampling);
+                UpdateStlSurfActor(actorManager.modelActor, *modelManager.surface);
+            }
+            break;
+
+        case 6:  // CustomTriangles
+            if (ImGui::Button("Create CustomTriangles")) {
+                // 自定义三角形创建逻辑
+            }
+            break;
+    }
+
+    ImGui::End();
+}
 }  // namespace ocl

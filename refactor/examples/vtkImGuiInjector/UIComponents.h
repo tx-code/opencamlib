@@ -68,6 +68,12 @@ public:
      * @param injector VTK ImGui注入器
      */
     static void DrawDebugDropCutterWindow(vtkDearImGuiInjector* injector);
+
+    /**
+     * @brief 绘制原始几何体UI (Cube,Sphere,Cylinder,CustomTriangles...)
+     * @param injector VTK ImGui注入器
+     */
+    static void DrawPrimitiveUI(vtkDearImGuiInjector* injector);
 };
 
 }  // namespace ocl

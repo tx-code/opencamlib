@@ -3,10 +3,12 @@
 #include "algo/fiberpushcutter.hpp"
 
 // 添加随机数生成器相关头文件
+#include <boost/math/constants/constants.hpp>
 #include <functional>
 #include <random>
 #include <tbb/global_control.h>
 #include <tbb/info.h>
+
 
 namespace
 {
@@ -30,6 +32,341 @@ void printStats(const std::vector<ocl::CLPoint>& points)
 }
 }  // namespace
 
+void CAMModelManager::createCube(float length, float width, float height)
+{
+    stlFilePath.clear();
+    surface = std::make_unique<ocl::STLSurf>();
+
+    // Calculate half dimensions
+    float hx = length / 2.0f;
+    float hy = width / 2.0f;
+    float hz = height / 2.0f;
+
+    // Create triangles for a cube based on BuildRegularGeoms.py implementation
+
+    // Bottom face
+    surface->addTriangle(ocl::Point(-hx, -hy, -hz),
+                         ocl::Point(hx, -hy, -hz),
+                         ocl::Point(hx, -hy, hz));
+    surface->addTriangle(ocl::Point(-hx, -hy, -hz),
+                         ocl::Point(hx, -hy, hz),
+                         ocl::Point(-hx, -hy, hz));
+
+    // Top face
+    surface->addTriangle(ocl::Point(-hx, hy, -hz), ocl::Point(hx, hy, hz), ocl::Point(hx, hy, -hz));
+    surface->addTriangle(ocl::Point(-hx, hy, -hz), ocl::Point(-hx, hy, hz), ocl::Point(hx, hy, hz));
+
+    // Left face
+    surface->addTriangle(ocl::Point(-hx, -hy, -hz),
+                         ocl::Point(-hx, hy, hz),
+                         ocl::Point(-hx, hy, -hz));
+    surface->addTriangle(ocl::Point(-hx, -hy, -hz),
+                         ocl::Point(-hx, -hy, hz),
+                         ocl::Point(-hx, hy, hz));
+
+    // Right face
+    surface->addTriangle(ocl::Point(hx, -hy, -hz), ocl::Point(hx, hy, -hz), ocl::Point(hx, hy, hz));
+    surface->addTriangle(ocl::Point(hx, -hy, -hz), ocl::Point(hx, hy, hz), ocl::Point(hx, -hy, hz));
+
+    // Front face
+    surface->addTriangle(ocl::Point(-hx, -hy, -hz),
+                         ocl::Point(-hx, hy, -hz),
+                         ocl::Point(hx, hy, -hz));
+    surface->addTriangle(ocl::Point(-hx, -hy, -hz),
+                         ocl::Point(hx, hy, -hz),
+                         ocl::Point(hx, -hy, -hz));
+
+    // Back face
+    surface->addTriangle(ocl::Point(-hx, -hy, hz), ocl::Point(hx, hy, hz), ocl::Point(-hx, hy, hz));
+    surface->addTriangle(ocl::Point(-hx, -hy, hz), ocl::Point(hx, -hy, hz), ocl::Point(hx, hy, hz));
+
+    // 重建AABB树
+    rebuildAABBTree();
+
+    spdlog::info("Created cube with dimensions: {} x {} x {}", length, width, height);
+}
+
+void CAMModelManager::createSphere(float radius, int count)
+{
+    stlFilePath.clear();
+    surface = std::make_unique<ocl::STLSurf>();
+
+    // Create sphere triangles
+    for (int i = 0; i < count; i++) {
+        double theta1 = boost::math::constants::pi<double>() * static_cast<double>(i) / count;
+        double theta2 = boost::math::constants::pi<double>() * static_cast<double>(i + 1) / count;
+
+        for (int j = 0; j < 2 * count; j++) {
+            double phi1 =
+                2.0 * boost::math::constants::pi<double>() * static_cast<double>(j) / (2 * count);
+            double phi2 = 2.0 * boost::math::constants::pi<double>() * static_cast<double>(j + 1)
+                / (2 * count);
+
+            // Calculate points for two triangles
+            double x1 = radius * sin(theta1) * cos(phi1);
+            double y1 = radius * sin(theta1) * sin(phi1);
+            double z1 = radius * cos(theta1);
+
+            double x2 = radius * sin(theta2) * cos(phi1);
+            double y2 = radius * sin(theta2) * sin(phi1);
+            double z2 = radius * cos(theta2);
+
+            double x3 = radius * sin(theta1) * cos(phi2);
+            double y3 = radius * sin(theta1) * sin(phi2);
+            double z3 = radius * cos(theta1);
+
+            double x4 = radius * sin(theta2) * cos(phi2);
+            double y4 = radius * sin(theta2) * sin(phi2);
+            double z4 = radius * cos(theta2);
+
+            // Add triangles, avoiding degenerate cases at the poles
+            if (sin(theta1) != 0.0) {
+                surface->addTriangle(ocl::Point(x1, y1, z1),
+                                     ocl::Point(x2, y2, z2),
+                                     ocl::Point(x3, y3, z3));
+            }
+
+            if (sin(theta2) != 0.0) {
+                surface->addTriangle(ocl::Point(x2, y2, z2),
+                                     ocl::Point(x4, y4, z4),
+                                     ocl::Point(x3, y3, z3));
+            }
+        }
+    }
+
+    // 重建AABB树
+    rebuildAABBTree();
+
+    spdlog::info("Created sphere with radius: {}, resolution: {}", radius, count);
+}
+
+void CAMModelManager::createEllipsoid(float radius1, float radius2, int count)
+{
+    stlFilePath.clear();
+    surface = std::make_unique<ocl::STLSurf>();
+
+    // Create ellipsoid triangles using spherical coordinates
+    for (int i = 0; i < count; i++) {
+        double theta1 = boost::math::constants::pi<double>() * static_cast<double>(i) / count;
+        double theta2 = boost::math::constants::pi<double>() * static_cast<double>(i + 1) / count;
+
+        for (int j = 0; j < 2 * count; j++) {
+            double phi1 =
+                2.0 * boost::math::constants::pi<double>() * static_cast<double>(j) / (2 * count);
+            double phi2 = 2.0 * boost::math::constants::pi<double>() * static_cast<double>(j + 1)
+                / (2 * count);
+
+            // Calculate points for two triangles, scaling x and y by radius1, z by radius2
+            double x1 = radius1 * sin(theta1) * cos(phi1);
+            double y1 = radius1 * sin(theta1) * sin(phi1);
+            double z1 = radius2 * cos(theta1);
+
+            double x2 = radius1 * sin(theta2) * cos(phi1);
+            double y2 = radius1 * sin(theta2) * sin(phi1);
+            double z2 = radius2 * cos(theta2);
+
+            double x3 = radius1 * sin(theta1) * cos(phi2);
+            double y3 = radius1 * sin(theta1) * sin(phi2);
+            double z3 = radius2 * cos(theta1);
+
+            double x4 = radius1 * sin(theta2) * cos(phi2);
+            double y4 = radius1 * sin(theta2) * sin(phi2);
+            double z4 = radius2 * cos(theta2);
+
+            // Add triangles, avoiding degenerate cases at the poles
+            if (sin(theta1) != 0.0) {
+                surface->addTriangle(ocl::Point(x1, y1, z1),
+                                     ocl::Point(x2, y2, z2),
+                                     ocl::Point(x3, y3, z3));
+            }
+
+            if (sin(theta2) != 0.0) {
+                surface->addTriangle(ocl::Point(x2, y2, z2),
+                                     ocl::Point(x4, y4, z4),
+                                     ocl::Point(x3, y3, z3));
+            }
+        }
+    }
+
+    // 重建AABB树
+    rebuildAABBTree();
+
+    spdlog::info("Created ellipsoid with radius1: {}, radius2: {}, resolution: {}",
+                 radius1,
+                 radius2,
+                 count);
+}
+
+void CAMModelManager::createCylinder(float diameter, float height, int count, bool closed)
+{
+    stlFilePath.clear();
+    surface = std::make_unique<ocl::STLSurf>();
+
+    float radius = diameter / 2.0f;
+
+    // Center points of top and bottom faces
+    ocl::Point bottomCenter(0, 0, -height / 2);
+    ocl::Point topCenter(0, 0, height / 2);
+
+    for (int i = 0; i < count; i++) {
+        double angle = 2.0 * boost::math::constants::pi<double>() * static_cast<double>(i) / count;
+        double nextAngle = 2.0 * boost::math::constants::pi<double>()
+            * static_cast<double>((i + 1) % count) / count;
+
+        double x1 = radius * cos(angle);
+        double y1 = radius * sin(angle);
+        double x2 = radius * cos(nextAngle);
+        double y2 = radius * sin(nextAngle);
+
+        // Points for bottom and top faces
+        ocl::Point bottomPt1(x1, y1, -height / 2);
+        ocl::Point bottomPt2(x2, y2, -height / 2);
+        ocl::Point topPt1(x1, y1, height / 2);
+        ocl::Point topPt2(x2, y2, height / 2);
+
+        // Add triangles for bottom and top faces if closed
+        if (closed) {
+            surface->addTriangle(bottomCenter, bottomPt1, bottomPt2);
+            surface->addTriangle(topCenter, topPt2, topPt1);
+        }
+
+        // Add triangles for side face (two triangles per side segment)
+        surface->addTriangle(bottomPt1, topPt1, bottomPt2);
+        surface->addTriangle(bottomPt2, topPt1, topPt2);
+    }
+
+    // 重建AABB树
+    rebuildAABBTree();
+
+    spdlog::info("Created cylinder with diameter: {}, height: {}, resolution: {}, closed: {}",
+                 diameter,
+                 height,
+                 count,
+                 closed);
+}
+
+void CAMModelManager::createCone(float diameter1,
+                                 float diameter2,
+                                 float height,
+                                 float edgeLength,
+                                 int count,
+                                 bool closed)
+{
+    stlFilePath.clear();
+    surface = std::make_unique<ocl::STLSurf>();
+
+    float radius1 = diameter1 / 2.0f;  // Bottom radius
+    float radius2 = diameter2 / 2.0f;  // Top radius
+
+    // Center points of top and bottom faces
+    ocl::Point bottomCenter(0, 0, -height / 2);
+    ocl::Point topCenter(0, 0, height / 2);
+
+    // Calculate number of segments based on the edge length and perimeter
+    if (edgeLength > 0) {
+        float maxRadius = std::max(radius1, radius2);
+        float maxPerimeter = 2 * boost::math::constants::pi<float>() * maxRadius;
+        int calculated_count = static_cast<int>(maxPerimeter / edgeLength);
+        if (calculated_count > count) {
+            count = calculated_count;
+        }
+    }
+
+    for (int i = 0; i < count; i++) {
+        double angle = 2.0 * boost::math::constants::pi<double>() * static_cast<double>(i) / count;
+        double nextAngle = 2.0 * boost::math::constants::pi<double>()
+            * static_cast<double>((i + 1) % count) / count;
+
+        double x1 = radius1 * cos(angle);
+        double y1 = radius1 * sin(angle);
+        double x2 = radius1 * cos(nextAngle);
+        double y2 = radius1 * sin(nextAngle);
+
+        double xt1 = radius2 * cos(angle);
+        double yt1 = radius2 * sin(angle);
+        double xt2 = radius2 * cos(nextAngle);
+        double yt2 = radius2 * sin(nextAngle);
+
+        // Points for bottom and top faces
+        ocl::Point bottomPt1(x1, y1, -height / 2);
+        ocl::Point bottomPt2(x2, y2, -height / 2);
+        ocl::Point topPt1(xt1, yt1, height / 2);
+        ocl::Point topPt2(xt2, yt2, height / 2);
+
+        // Add triangles for bottom and top faces if closed
+        if (closed) {
+            if (radius1 > 0) {
+                surface->addTriangle(bottomCenter, bottomPt1, bottomPt2);
+            }
+            if (radius2 > 0) {
+                surface->addTriangle(topCenter, topPt2, topPt1);
+            }
+        }
+
+        // Add triangles for side face (two triangles per side segment)
+        surface->addTriangle(bottomPt1, topPt1, bottomPt2);
+        surface->addTriangle(bottomPt2, topPt1, topPt2);
+    }
+
+    // 重建AABB树
+    rebuildAABBTree();
+
+    spdlog::info(
+        "Created cone with diameter1: {}, diameter2: {}, height: {}, resolution: {}, closed: {}",
+        diameter1,
+        diameter2,
+        height,
+        count,
+        closed);
+}
+
+void CAMModelManager::createTorus(float radius1, float radius2, int count)
+{
+    stlFilePath.clear();
+    surface = std::make_unique<ocl::STLSurf>();
+
+    // radius1 - major radius (center of tube to center of torus)
+    // radius2 - minor radius (radius of the tube)
+
+    for (int i = 0; i < count; i++) {
+        double theta1 = 2.0 * boost::math::constants::pi<double>() * static_cast<double>(i) / count;
+        double theta2 = 2.0 * boost::math::constants::pi<double>()
+            * static_cast<double>((i + 1) % count) / count;
+
+        for (int j = 0; j < count; j++) {
+            double phi1 =
+                2.0 * boost::math::constants::pi<double>() * static_cast<double>(j) / count;
+            double phi2 = 2.0 * boost::math::constants::pi<double>()
+                * static_cast<double>((j + 1) % count) / count;
+
+            // Calculate the four points that form two triangles
+            // Point on the torus at (theta, phi)
+            auto torusPoint = [radius1, radius2](double theta, double phi) {
+                double x = (radius1 + radius2 * cos(phi)) * cos(theta);
+                double y = (radius1 + radius2 * cos(phi)) * sin(theta);
+                double z = radius2 * sin(phi);
+                return ocl::Point(x, y, z);
+            };
+
+            ocl::Point p1 = torusPoint(theta1, phi1);
+            ocl::Point p2 = torusPoint(theta2, phi1);
+            ocl::Point p3 = torusPoint(theta1, phi2);
+            ocl::Point p4 = torusPoint(theta2, phi2);
+
+            // Add two triangles for this grid cell
+            surface->addTriangle(p1, p2, p4);
+            surface->addTriangle(p1, p4, p3);
+        }
+    }
+
+    // 重建AABB树
+    rebuildAABBTree();
+
+    spdlog::info("Created torus with major radius: {}, minor radius: {}, resolution: {}",
+                 radius1,
+                 radius2,
+                 count);
+}
 
 ocl::Path createGuidePath(const ocl::STLSurf& surface)
 {

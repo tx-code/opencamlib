@@ -52,6 +52,18 @@ struct CAMModelManager
             aabbTree.reset();
         }
     }
+
+    void createCube(float length, float width, float height);
+    void createCylinder(float diameter, float height, int count = 50, bool closed = true);
+    void createCone(float diameter1,
+                    float diameter2,
+                    float height,
+                    float edgeLength = 1.0f,
+                    int count = 50,
+                    bool closed = true);
+    void createSphere(float radius, int count = 50);
+    void createEllipsoid(float radius1, float radius2, int count = 50);
+    void createTorus(float radius1, float radius2, int count = 50);
 };
 
 void hello_ocl();
