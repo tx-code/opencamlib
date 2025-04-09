@@ -155,7 +155,8 @@ protected:
 #endif
 
         // 创建fiber网格，根据指定间隔
-        constexpr double fiberSpacing = 0.5;  // fiber间隔为0.5单位
+        // 间隔大一点，否则测试时间太长
+        constexpr double fiberSpacing = 2.5;  // fiber间隔为2.5单位
         std::vector<Fiber> fibers;
 
         if (direction == "X") {
@@ -235,9 +236,9 @@ TEST_F(FiberPushCutterSTLTest, PycamTextboxTest)
     testFibersOnModel(model, ballCutter, "X");
     testFibersOnModel(model, ballCutter, "Y");
 
-    // testFibersOnModel(model, cylCutter, "X");
-    // testFibersOnModel(model, cylCutter, "Y");
+    testFibersOnModel(model, cylCutter, "X");
+    testFibersOnModel(model, cylCutter, "Y");
 
-    // testFibersOnModel(model, coneCutter, "X");
-    // testFibersOnModel(model, coneCutter, "Y");
+    testFibersOnModel(model, coneCutter, "X");
+    testFibersOnModel(model, coneCutter, "Y");
 }
