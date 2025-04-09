@@ -296,8 +296,11 @@ bool MillingCutter::generalFacetPush(double normal_length,
                + u * (t.p[1].y - t.p[0].y) + v * (t.p[2].y - t.p[0].y));
         if (tval < 0.0 || tval > 1.0) {
             spdlog::warn("MillingCutter::facetPush() tval= {} error!?", tval);
-            spdlog::warn(" (most probably a user error, the fiber is too short (length = {}) "
-                         "compared to the STL model?)", fib.p2.y - fib.p1.y);
+            spdlog::warn(" triangle: {}", t.str());
+            spdlog::warn(" fiber: {}", fib.str());
+            // spdlog::warn(" (most probably a user error, the fiber is too short (length = {}) "
+            //              "compared to the STL model?)",
+            //              fib.p2.y - fib.p1.y);
         }
         assert(tval > 0.0 && tval < 1.0);
         i.update(tval, cc);

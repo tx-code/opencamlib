@@ -114,7 +114,7 @@ protected:
         // 设置STL模型
         fpc->setSTL(model);
 
-#if 1
+#if 0
         // 确定模型边界
         double xmin = std::numeric_limits<double>::max();
         double xmax = std::numeric_limits<double>::lowest();
@@ -233,7 +233,7 @@ TEST_F(FiberPushCutterSTLTest, PycamTextboxTest)
 {
     STLSurf model = loadStlModel("pycam-textbox.stl");
     testFibersOnModel(model, ballCutter, "X");
-    // testFibersOnModel(model, ballCutter, "Y");
+    testFibersOnModel(model, ballCutter, "Y");
 
     // testFibersOnModel(model, cylCutter, "X");
     // testFibersOnModel(model, cylCutter, "Y");
