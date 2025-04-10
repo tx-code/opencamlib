@@ -1,6 +1,8 @@
 ﻿#include "oclUtils.h"
 
+#include "algo/batchpushcutter.hpp"
 #include "algo/fiberpushcutter.hpp"
+
 
 // 添加随机数生成器相关头文件
 #include <boost/math/constants/constants.hpp>
@@ -30,6 +32,8 @@ void printStats(const std::vector<ocl::CLPoint>& points)
         }
     }
 }
+
+
 }  // namespace
 
 void CAMModelManager::createCube(float length, float width, float height)
@@ -745,4 +749,121 @@ void fiberPushCutter(CAMModelManager& model,
 
     spdlog::info("After running the fpc, fiber: {}", fiber.str());
     UpdateFiberActor(actorManager.operationActor, {fiber});
+}
+
+void batchFiberPushCutter(CAMModelManager& model,
+                          vtkActorManager& actorManager,
+                          double sampling,
+                          double lift_to,
+                          double lift_step,
+                          double lift_from,
+                          bool verbose)
+{
+    if (!model.cutter || !model.surface) {
+        spdlog::error("No cutter or surface");
+        return;
+    }
+
+    model.operation = std::make_unique<ocl::BatchPushCutter>();
+    auto& bpc = *dynamic_cast<ocl::BatchPushCutter*>(model.operation.get());
+    bpc.setSampling(sampling);
+    bpc.setCutter(model.cutter.get());
+
+    // 计算XY平面的边界，并扩展2个刀具半径
+    double minx = model.surface->bb.minpt.x - 2 * model.cutter->getRadius();
+    double maxx = model.surface->bb.maxpt.x + 2 * model.cutter->getRadius();
+    double miny = model.surface->bb.minpt.y - 2 * model.cutter->getRadius();
+    double maxy = model.surface->bb.maxpt.y + 2 * model.cutter->getRadius();
+
+    // 使用匿名函数生成fibers
+    auto generateFibers = [&](double minx,
+                              double maxx,
+                              double miny,
+                              double maxy,
+                              double sampling,
+                              double lift_from,
+                              double lift_to,
+                              double lift_step) {
+        // 计算X和Y方向上需要的fiber数量
+        int Nx = static_cast<int>((maxx - minx) / sampling);
+        int Ny = static_cast<int>((maxy - miny) / sampling);
+
+        // 生成X和Y方向的采样点
+        auto generateRange = [](double start, double end, int N) {
+            std::vector<double> output;
+            double d = (end - start) / static_cast<double>(N);
+            double v = start;
+            for (int n = 0; n < (N + 1); ++n) {
+                output.push_back(v);
+                v = v + d;
+            }
+            return output;
+        };
+
+        std::vector<double> xvals = generateRange(minx, maxx, Nx);
+        std::vector<double> yvals = generateRange(miny, maxy, Ny);
+
+        // 收集所有生成的X和Y方向的fibers
+        std::vector<ocl::Fiber> xfibers;
+        std::vector<ocl::Fiber> yfibers;
+
+        // 对每个高度生成fiber
+        for (double z = lift_from; z <= lift_to; z += lift_step) {
+            // 为每个y值生成X方向的fiber
+            for (double y : yvals) {
+                ocl::Point p1(minx, y, z);
+                ocl::Point p2(maxx, y, z);
+                ocl::Fiber f(p1, p2);
+                xfibers.push_back(f);
+            }
+
+            // 为每个x值生成Y方向的fiber
+            for (double x : xvals) {
+                ocl::Point p1(x, miny, z);
+                ocl::Point p2(x, maxy, z);
+                ocl::Fiber f(p1, p2);
+                yfibers.push_back(f);
+            }
+        }
+
+        return std::make_pair(xfibers, yfibers);
+    };
+
+    // 生成fibers
+    auto [xfibers, yfibers] =
+        generateFibers(minx, maxx, miny, maxy, sampling, lift_from, lift_to, lift_step);
+
+    if (verbose) {
+        spdlog::info("Generated {} X-direction fibers", xfibers.size());
+        spdlog::info("Generated {} Y-direction fibers", yfibers.size());
+    }
+
+    // 设置X方向的fibers并运行
+    bpc.setXDirection();
+    bpc.setSTL(*model.surface);
+    for (auto& fiber : xfibers) {
+        bpc.appendFiber(fiber);
+    }
+    bpc.run();
+    auto xfibers_processed = *bpc.getFibers();
+
+    // 重置并设置Y方向的fibers并运行
+    bpc.reset();
+    bpc.setYDirection();
+    bpc.setSTL(*model.surface);
+    for (auto& fiber : yfibers) {
+        bpc.appendFiber(fiber);
+    }
+    bpc.run();
+    auto yfibers_processed = *bpc.getFibers();
+
+    // 更新fiber显示
+    std::vector<ocl::Fiber> all_fibers;
+    all_fibers.insert(all_fibers.end(), xfibers_processed.begin(), xfibers_processed.end());
+    all_fibers.insert(all_fibers.end(), yfibers_processed.begin(), yfibers_processed.end());
+
+    UpdateFiberActor(actorManager.operationActor, all_fibers);
+    if (actorManager.operationActor) {
+        actorManager.operationActor->SetObjectName("Batch Fiber PushCutter");
+    }
 }

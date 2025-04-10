@@ -220,7 +220,8 @@ void UIComponents::DrawOperationUI(vtkDearImGuiInjector* injector)
                                              "AdaptiveWaterLine",
                                              "PathDropCutter",
                                              "AdaptivePathDropCutter",
-                                             "RandomBatchDropCutter"};
+                                             "RandomBatchDropCutter",
+                                             "BatchFiberPushCutter"};
 
             // 使用全局设置
             auto& settings = SettingsManager::GetSettings();
@@ -232,7 +233,8 @@ void UIComponents::DrawOperationUI(vtkDearImGuiInjector* injector)
                                     IM_ARRAYSIZE(op_types));
 
             switch (settings.op_type_index) {
-                case 0:
+                case 0: // waterline
+                case 5: // batch fiber push cutter
                     changed |=
                         ImGui::InputDouble("Sampling", &settings.sampling, 0.01f, 1.0f, "%.3f");
                     changed |=
@@ -324,6 +326,14 @@ void UIComponents::DrawOperationUI(vtkDearImGuiInjector* injector)
                                                   actorManager,
                                                   settings.sampling,
                                                   settings.random_points);
+                            break;
+                        case 5:
+                            batchFiberPushCutter(modelManager,
+                                                 actorManager,
+                                                 settings.sampling,
+                                                 settings.lift_to,
+                                                 settings.lift_step,
+                                                 settings.lift_from);
                             break;
                     }
                     injector->ForceResetCamera();

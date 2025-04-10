@@ -93,6 +93,15 @@ void fiberPushCutter(CAMModelManager& model,
                      const Eigen::Vector3d& end,
                      bool verbose = true);
 
+// 跟waterline本质一样，只不过这里会渲染fiber(interval)，而不是weave操作之后的loop
+void batchFiberPushCutter(CAMModelManager& model,
+                          vtkActorManager& actorManager,
+                          double sampling,
+                          double lift_to = 1,
+                          double lift_step = 0.1,
+                          double lift_from = 0.0,
+                          bool verbose = true);
+
 void adaptiveWaterline(CAMModelManager& model,
                        vtkActorManager& actorManager,
                        double sampling,

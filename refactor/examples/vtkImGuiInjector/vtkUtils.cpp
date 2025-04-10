@@ -737,73 +737,180 @@ void UpdatePointCloudActor(vtkSmartPointer<vtkActor>& actor,
 void UpdateFiberActor(vtkSmartPointer<vtkActor>& actor,
                       const std::vector<ocl::Fiber>& fibers,
                       const double lineColor[3],
-                      const double pointColor[3],
                       double opacity)
 {
     assert(actor);
+
+    // If no fibers, clear the actor and return
+    if (fibers.empty()) {
+        spdlog::warn("No fibers to visualize");
+        vtkNew<vtkPolyData> emptyPolyData;
+        vtkNew<vtkPolyDataMapper> mapper;
+        mapper->SetInputData(emptyPolyData);
+        actor->SetMapper(mapper);
+        actor->SetObjectName("Fibers (Empty)");
+        return;
+    }
+
     vtkNew<vtkPoints> points;
     vtkNew<vtkCellArray> lines;
     vtkNew<vtkCellArray> vertices;
 
-    // 用于存储颜色
-    vtkNew<vtkUnsignedCharArray> cellColors;
-    cellColors->SetNumberOfComponents(3);
-    cellColors->SetName("CellColors");
+    // Structure to temporarily store vertex color info
+    struct VertexColorInfo
+    {
+        unsigned char color[3];
+    };
+    std::vector<VertexColorInfo>
+        vertexColorsList;  // Stores colors for all vertices in order of creation
 
-    // 转换颜色为unsigned char数组以用于VTK
-    unsigned char lineColorUC[3], pointColorUC[3];
+    // Convert line color to unsigned char for VTK
+    unsigned char lineColorUC[3];
     for (int i = 0; i < 3; i++) {
         lineColorUC[i] = static_cast<unsigned char>(lineColor[i] * 255.0);
-        pointColorUC[i] = static_cast<unsigned char>(pointColor[i] * 255.0);
     }
+    // Log the line color being used
+    spdlog::debug("UpdateFiberActor using lineColorUC: ({}, {}, {})",
+                  lineColorUC[0],
+                  lineColorUC[1],
+                  lineColorUC[2]);
+
 
     int pointId = 0;
     for (const auto& fiber : fibers) {
+        // 对于每个fiber中的每个interval
         for (const auto& interval : fiber.ints) {
+            // 获取interval起点和终点的3D坐标
             auto p1 = fiber.point(interval.lower);
             auto p2 = fiber.point(interval.upper);
 
-            // 添加起点和终点
-            points->InsertNextPoint(p1.x, p1.y, p1.z);
-            points->InsertNextPoint(p2.x, p2.y, p2.z);
+            // Add points
+            points->InsertNextPoint(p1.x, p1.y, p1.z);  // pointId
+            points->InsertNextPoint(p2.x, p2.y, p2.z);  // pointId + 1
 
-            // 创建从起点到终点的线
+            // Create line cell
             vtkNew<vtkLine> line;
             line->GetPointIds()->SetId(0, pointId);
             line->GetPointIds()->SetId(1, pointId + 1);
             lines->InsertNextCell(line);
-            cellColors->InsertNextTypedTuple(lineColorUC);
 
-            // 创建起点和终点的顶点
-            vtkNew<vtkVertex> vertex1;
+            // Create vertex cells (order matters for vertexColorsList)
+            vtkNew<vtkVertex> vertex1;  // Corresponds to lower point (pointId)
             vertex1->GetPointIds()->SetId(0, pointId);
             vertices->InsertNextCell(vertex1);
-            cellColors->InsertNextTypedTuple(pointColorUC);
 
-            vtkNew<vtkVertex> vertex2;
+            vtkNew<vtkVertex> vertex2;  // Corresponds to upper point (pointId + 1)
             vertex2->GetPointIds()->SetId(0, pointId + 1);
             vertices->InsertNextCell(vertex2);
-            cellColors->InsertNextTypedTuple(pointColorUC);
 
+            // Store vertex colors in the order vertices were created (vertex1 then vertex2)
+            double lowerColor[3];
+            GetClColor(interval.lower_cc.type, lowerColor);
+            unsigned char lowerColorUC[3];
+            for (int i = 0; i < 3; i++) {
+                lowerColorUC[i] = static_cast<unsigned char>(lowerColor[i] * 255.0);
+            }
+            vertexColorsList.push_back(
+                {lowerColorUC[0], lowerColorUC[1], lowerColorUC[2]});  // Color for vertex1
+
+            double upperColor[3];
+            GetClColor(interval.upper_cc.type, upperColor);
+            unsigned char upperColorUC[3];
+            for (int i = 0; i < 3; i++) {
+                upperColorUC[i] = static_cast<unsigned char>(upperColor[i] * 255.0);
+            }
+            vertexColorsList.push_back(
+                {upperColorUC[0], upperColorUC[1], upperColorUC[2]});  // Color for vertex2
+
+            // 更新下一组点的起始ID
             pointId += 2;
         }
     }
 
+    // Create polyData
     vtkNew<vtkPolyData> polyData;
     polyData->SetPoints(points);
-    polyData->SetLines(lines);
+    // Set cells - VTK internally orders them (typically Verts, Lines, ...)
     polyData->SetVerts(vertices);
-    polyData->GetCellData()->SetScalars(cellColors);
+    polyData->SetLines(lines);
 
+    // Create cell colors array
+    vtkNew<vtkUnsignedCharArray> colors;
+    colors->SetNumberOfComponents(3);
+    colors->SetName("Colors");
+
+    // Get number of vertices and lines
+    vtkIdType numVertices = vertices->GetNumberOfCells();
+    vtkIdType numLines = lines->GetNumberOfCells();
+
+    // --- Fill colors array according to VTK's internal cell order (Verts first, then Lines) ---
+
+    // 1. Fill vertex colors first
+    if (vertexColorsList.size() != numVertices) {
+        spdlog::error("Mismatch between number of vertex cells ({}) and stored vertex colors ({})",
+                      numVertices,
+                      vertexColorsList.size());
+        // Handle error: Clear actor and return
+        vtkNew<vtkPolyData> emptyPolyData;
+        vtkNew<vtkPolyDataMapper> errorMapper;
+        errorMapper->SetInputData(emptyPolyData);
+        actor->SetMapper(errorMapper);
+        actor->SetObjectName("Fiber Actor (Color Error)");
+        return;
+    }
+    spdlog::debug("Populating {} vertex colors.", numVertices);
+    for (vtkIdType i = 0; i < numVertices; ++i) {
+        // 注意：这里假设vertices是按 vertex1, vertex2, vertex1, vertex2... 的顺序添加的
+        colors->InsertNextTypedTuple(vertexColorsList[i].color);
+    }
+
+    // 2. Fill line colors second
+    spdlog::debug("Populating {} line colors.", numLines);
+    for (vtkIdType i = 0; i < numLines; ++i) {
+        colors->InsertNextTypedTuple(lineColorUC);
+    }
+
+    // Verify total colors match total cells
+    if (colors->GetNumberOfTuples() != polyData->GetNumberOfCells()) {
+        spdlog::error("Mismatch between number of color tuples ({}) and total cells ({})",
+                      colors->GetNumberOfTuples(),
+                      polyData->GetNumberOfCells());
+        // Handle error like above
+        vtkNew<vtkPolyData> emptyPolyData;
+        vtkNew<vtkPolyDataMapper> errorMapper;
+        errorMapper->SetInputData(emptyPolyData);
+        actor->SetMapper(errorMapper);
+        actor->SetObjectName("Fiber Actor (Count Error)");
+        return;
+    }
+
+
+    // Set cell data scalars
+    polyData->GetCellData()->SetScalars(colors);
+
+    // Remove the cellTypes array logic as it's not directly used for rendering color here
+    // vtkNew<vtkIntArray> cellTypes; ... polyData->GetCellData()->AddArray(cellTypes);
+
+
+    // Create mapper
     vtkNew<vtkPolyDataMapper> mapper;
     mapper->SetInputData(polyData);
-    mapper->SetScalarModeToUseCellData();
-    mapper->ScalarVisibilityOn();
+    mapper->SetScalarModeToUseCellData();  // Use cell scalars for coloring
+    mapper->ScalarVisibilityOn();          // Enable scalar coloring
+    // Optional: Explicitly select the array, though SetScalars usually makes it active
+    // mapper->SelectColorArray("Colors");
 
+    // 设置actor
     actor->SetMapper(mapper);
     actor->GetProperty()->SetLineWidth(2);
-    actor->GetProperty()->SetPointSize(5);
+    actor->GetProperty()->SetEdgeOpacity(0.5);
+    actor->GetProperty()->SetPointSize(5);  // 增大点的大小，使颜色更明显
     SetActorOpacity(actor, opacity);
 
+    // 尝试为点设置自定义渲染属性
+    actor->GetProperty()
+        ->SetInterpolationToFlat();  // Use flat shading (no color interpolation along lines)
+
     actor->SetObjectName(fmt::format("Fibers(N={})", fibers.size()));
+    spdlog::debug("UpdateFiberActor finished successfully for {} fibers.", fibers.size());
 }
