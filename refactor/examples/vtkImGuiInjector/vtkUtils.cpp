@@ -104,10 +104,13 @@ void UpdateCLPointCloudActor(vtkSmartPointer<vtkActor>& pointsActor,
     typeValues->SetNumberOfComponents(1);
     typeValues->SetName("CCType");
 
-    // 添加每个点的类型值
+    // 统计实际存在的CCType类型
+    std::set<int> existingTypes;
     for (const auto& p : clpoints) {
         auto* cc = p.cc.load();
-        typeValues->InsertNextValue(static_cast<int>(cc->type));
+        int typeValue = static_cast<int>(cc->type);
+        typeValues->InsertNextValue(typeValue);
+        existingTypes.insert(typeValue);
     }
 
     // 将类型值添加到多边形数据的点数据中
@@ -127,12 +130,13 @@ void UpdateCLPointCloudActor(vtkSmartPointer<vtkActor>& pointsActor,
     pointsActor->SetMapper(mapper);
     pointsActor->GetProperty()->SetPointSize(5);  // 增大点的大小以便更好地可视化
 
-    if (legendActor && !legendActor->GetNumberOfEntries()) {
+    if (legendActor) {
         spdlog::info("Set the entries for the legend box");
-        // Set the number of entries in the legend
-        // CCType::CCTYPE_ERROR是最后一个枚举值，加1得到实际的枚举元素数量
-        int numEntries = static_cast<int>(ocl::CCType::CCTYPE_ERROR) + 1;
-        spdlog::info("Setting legend entries: {}", numEntries);
+        // 设置图例条目数为实际存在的类型数量
+        int numEntries = existingTypes.size();
+        spdlog::info("Setting legend entries: {} (out of {} possible types)",
+                     numEntries,
+                     static_cast<int>(ocl::CCType::CCTYPE_ERROR) + 1);
         legendActor->SetNumberOfEntries(numEntries);
 
         // Create a cube symbol for the legend entries
@@ -140,24 +144,22 @@ void UpdateCLPointCloudActor(vtkSmartPointer<vtkActor>& pointsActor,
         cubeSource->Update();
 
         // Add entries to the legend
-        for (size_t i = 0; i <= ocl::CCType::CCTYPE_ERROR; i++) {
+        int entryIndex = 0;
+        for (int typeValue : existingTypes) {
             // 使用三分量数组先获取RGB颜色
             double rgb[3] = {0, 0, 0};
 
             // Get the color for this CCType
             if (forCLPoints) {
-                GetClColor(static_cast<ocl::CCType>(i), rgb);
+                GetClColor(static_cast<ocl::CCType>(typeValue), rgb);
             }
             else {
-                GetCcColor(static_cast<ocl::CCType>(i), rgb);
+                GetCcColor(static_cast<ocl::CCType>(typeValue), rgb);
             }
 
             // 设置图例项
-            std::string typeName = ocl::CCType2String(static_cast<ocl::CCType>(i));
-            legendActor->SetEntry(static_cast<int>(i),
-                                  cubeSource->GetOutput(),
-                                  typeName.c_str(),
-                                  rgb);
+            std::string typeName = ocl::CCType2String(static_cast<ocl::CCType>(typeValue));
+            legendActor->SetEntry(entryIndex++, cubeSource->GetOutput(), typeName.c_str(), rgb);
         }
 
         // Configure legend appearance
@@ -166,19 +168,10 @@ void UpdateCLPointCloudActor(vtkSmartPointer<vtkActor>& pointsActor,
         legendActor->SetBackgroundColor(bgColor);
 
         // Position the legend in the bottom right corner
-        legendActor->GetPositionCoordinate()->SetCoordinateSystemToNormalizedViewport();
-        legendActor->GetPositionCoordinate()->SetValue(0.7, 0.05);
-        legendActor->GetPosition2Coordinate()->SetCoordinateSystemToNormalizedViewport();
-        legendActor->GetPosition2Coordinate()->SetValue(0.95, 0.45);
-
-        // // Set appearance for text
-        // vtkTextProperty* textProp = legend->GetEntryTextProperty();
-        // textProp->SetFontFamilyToArial();
-        // textProp->SetFontSize(10);
-        // textProp->SetBold(0);
-        // textProp->SetItalic(0);
-        // textProp->SetShadow(0);
-        // textProp->SetColor(1.0, 1.0, 1.0);
+        legendActor->GetPositionCoordinate()->SetCoordinateSystemToView();
+        legendActor->GetPositionCoordinate()->SetValue(0.4, -1.0);
+        legendActor->GetPosition2Coordinate()->SetCoordinateSystemToView();
+        legendActor->GetPosition2Coordinate()->SetValue(1.0, -0.4);
     }
 }
 

@@ -385,14 +385,17 @@ void CAMModelManager::createCustomTriangles(const std::list<ocl::Triangle>& tria
 ocl::Path createGuidePath(const ocl::STLSurf& surface)
 {
     // Enlarge 5%
+    double x_len = surface.bb.maxpt.x - surface.bb.minpt.x;
     double x_min = surface.bb.minpt.x;
-    x_min -= 0.05 * x_min;
+    x_min -= 0.05 * x_len;
     double x_max = surface.bb.maxpt.x;
-    x_max += 0.05 * x_max;
+    x_max += 0.05 * x_len;
+
+    double y_len = surface.bb.maxpt.y - surface.bb.minpt.y;
     double y_min = surface.bb.minpt.y;
-    y_min -= 0.05 * y_min;
+    y_min -= 0.05 * y_len;
     double y_max = surface.bb.maxpt.y;
-    y_max += 0.05 * y_max;
+    y_max += 0.05 * y_len;
     constexpr int NY = 40;
     const double dy = (y_max - y_min) / NY;
     ocl::Path path;
