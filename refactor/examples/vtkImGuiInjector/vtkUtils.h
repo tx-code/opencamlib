@@ -410,6 +410,7 @@ void UpdatePointCloudActor(vtkSmartPointer<vtkActor>& actor,
 
 // 可视化纤维
 void UpdateFiberActor(vtkSmartPointer<vtkActor>& actor,
+                      vtkSmartPointer<vtkLegendBoxActor>& legendActor,
                       const std::vector<ocl::Fiber>& fibers,
                       const double lineColor[3] = grey,
                       double opacity = 0.7);

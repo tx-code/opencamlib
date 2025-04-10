@@ -3,6 +3,7 @@
 #include "vtkUtils.h"
 
 #include <cmath>
+#include <set>
 #include <vtkAppendPolyData.h>
 #include <vtkSignedDistance.h>
 
@@ -168,10 +169,22 @@ void UpdateCLPointCloudActor(vtkSmartPointer<vtkActor>& pointsActor,
         legendActor->SetBackgroundColor(bgColor);
 
         // Position the legend in the bottom right corner
+        // Adjust height based on the number of entries
+        double baseHeightPerEntry = 0.04;
+        double verticalPadding = 0.01;
+        double totalHeight =
+            numEntries > 0 ? (numEntries * baseHeightPerEntry + 2 * verticalPadding) : 0;
+        double y1 = -1.0 + verticalPadding;  // Add padding at the bottom
+        double y2 = y1 + totalHeight;
+        // Ensure y2 does not exceed the top of the viewport or a reasonable limit
+        y2 = std::min(y2, 0.98);
+
         legendActor->GetPositionCoordinate()->SetCoordinateSystemToView();
-        legendActor->GetPositionCoordinate()->SetValue(0.4, -1.0);
+        legendActor->GetPositionCoordinate()->SetValue(0.4, y1);  // Keep width fixed, set bottom y
         legendActor->GetPosition2Coordinate()->SetCoordinateSystemToView();
-        legendActor->GetPosition2Coordinate()->SetValue(1.0, -0.4);
+        legendActor->GetPosition2Coordinate()->SetValue(1.0, y2);  // Keep right x fixed, set top y
+        legendActor->ScalarVisibilityOff();  // Ensure legend itself isn't colored by scalars
+        legendActor->PickableOff();
     }
 }
 
@@ -735,13 +748,14 @@ void UpdatePointCloudActor(vtkSmartPointer<vtkActor>& actor,
 }
 
 void UpdateFiberActor(vtkSmartPointer<vtkActor>& actor,
+                      vtkSmartPointer<vtkLegendBoxActor>& legendActor,
                       const std::vector<ocl::Fiber>& fibers,
                       const double lineColor[3],
                       double opacity)
 {
     assert(actor);
 
-    // If no fibers, clear the actor and return
+    // If no fibers, clear the actor and legend, then return
     if (fibers.empty()) {
         spdlog::warn("No fibers to visualize");
         vtkNew<vtkPolyData> emptyPolyData;
@@ -749,6 +763,9 @@ void UpdateFiberActor(vtkSmartPointer<vtkActor>& actor,
         mapper->SetInputData(emptyPolyData);
         actor->SetMapper(mapper);
         actor->SetObjectName("Fibers (Empty)");
+        if (legendActor) {
+            legendActor->SetNumberOfEntries(0);  // Clear legend entries
+        }
         return;
     }
 
@@ -763,6 +780,9 @@ void UpdateFiberActor(vtkSmartPointer<vtkActor>& actor,
     };
     std::vector<VertexColorInfo>
         vertexColorsList;  // Stores colors for all vertices in order of creation
+
+    // Collect unique CCTypes found at fiber endpoints
+    std::set<ocl::CCType> existingTypes;  // Added to collect types
 
     // Convert line color to unsigned char for VTK
     unsigned char lineColorUC[3];
@@ -803,22 +823,24 @@ void UpdateFiberActor(vtkSmartPointer<vtkActor>& actor,
             vertex2->GetPointIds()->SetId(0, pointId + 1);
             vertices->InsertNextCell(vertex2);
 
-            // Store vertex colors in the order vertices were created (vertex1 then vertex2)
+            // Store vertex colors and collect types
             double lowerColor[3];
-            GetClColor(interval.lower_cc.type, lowerColor);
+            ocl::CCType lowerType = interval.lower_cc.type;  // Get type
+            GetClColor(lowerType, lowerColor);
+            existingTypes.insert(lowerType);  // Collect type
             unsigned char lowerColorUC[3];
-            for (int i = 0; i < 3; i++) {
+            for (int i = 0; i < 3; i++)
                 lowerColorUC[i] = static_cast<unsigned char>(lowerColor[i] * 255.0);
-            }
             vertexColorsList.push_back(
                 {lowerColorUC[0], lowerColorUC[1], lowerColorUC[2]});  // Color for vertex1
 
             double upperColor[3];
-            GetClColor(interval.upper_cc.type, upperColor);
+            ocl::CCType upperType = interval.upper_cc.type;  // Get type
+            GetClColor(upperType, upperColor);
+            existingTypes.insert(upperType);  // Collect type
             unsigned char upperColorUC[3];
-            for (int i = 0; i < 3; i++) {
+            for (int i = 0; i < 3; i++)
                 upperColorUC[i] = static_cast<unsigned char>(upperColor[i] * 255.0);
-            }
             vertexColorsList.push_back(
                 {upperColorUC[0], upperColorUC[1], upperColorUC[2]});  // Color for vertex2
 
@@ -856,6 +878,8 @@ void UpdateFiberActor(vtkSmartPointer<vtkActor>& actor,
         errorMapper->SetInputData(emptyPolyData);
         actor->SetMapper(errorMapper);
         actor->SetObjectName("Fiber Actor (Color Error)");
+        if (legendActor)
+            legendActor->SetNumberOfEntries(0);  // Also clear legend on error
         return;
     }
     spdlog::debug("Populating {} vertex colors.", numVertices);
@@ -881,29 +905,25 @@ void UpdateFiberActor(vtkSmartPointer<vtkActor>& actor,
         errorMapper->SetInputData(emptyPolyData);
         actor->SetMapper(errorMapper);
         actor->SetObjectName("Fiber Actor (Count Error)");
+        if (legendActor)
+            legendActor->SetNumberOfEntries(0);  // Also clear legend on error
         return;
     }
 
-
     // Set cell data scalars
     polyData->GetCellData()->SetScalars(colors);
-
-    // Remove the cellTypes array logic as it's not directly used for rendering color here
-    // vtkNew<vtkIntArray> cellTypes; ... polyData->GetCellData()->AddArray(cellTypes);
-
 
     // Create mapper
     vtkNew<vtkPolyDataMapper> mapper;
     mapper->SetInputData(polyData);
     mapper->SetScalarModeToUseCellData();  // Use cell scalars for coloring
     mapper->ScalarVisibilityOn();          // Enable scalar coloring
-    // Optional: Explicitly select the array, though SetScalars usually makes it active
-    // mapper->SelectColorArray("Colors");
 
     // 设置actor
     actor->SetMapper(mapper);
     actor->GetProperty()->SetLineWidth(2);
-    actor->GetProperty()->SetEdgeOpacity(0.5);
+    // actor->GetProperty()->SetEdgeOpacity(0.5); // EdgeOpacity might make lines faint if opacity
+    // is also low
     actor->GetProperty()->SetPointSize(5);  // 增大点的大小，使颜色更明显
     SetActorOpacity(actor, opacity);
 
@@ -913,4 +933,52 @@ void UpdateFiberActor(vtkSmartPointer<vtkActor>& actor,
 
     actor->SetObjectName(fmt::format("Fibers(N={})", fibers.size()));
     spdlog::debug("UpdateFiberActor finished successfully for {} fibers.", fibers.size());
+
+
+    // --- Add Legend Logic ---
+    if (legendActor) {
+        int numEntries = existingTypes.size();
+        spdlog::info("Setting fiber legend entries: {} (based on vertex CCTypes)", numEntries);
+        legendActor->SetNumberOfEntries(numEntries);
+
+        // Create a symbol for the legend entries (using a small cube like before)
+        vtkNew<vtkCubeSource> cubeSource;
+        cubeSource->Update();
+
+        // Add entries to the legend
+        int entryIndex = 0;
+        for (ocl::CCType typeValue : existingTypes) {
+            double rgb[3] = {0, 0, 0};
+            GetClColor(typeValue, rgb);  // Get the color for this CL type
+
+            std::string typeName = ocl::CCType2String(typeValue);
+            legendActor->SetEntry(entryIndex++, cubeSource->GetOutput(), typeName.c_str(), rgb);
+        }
+
+        // Configure legend appearance (same as in UpdateCLPointCloudActor)
+        legendActor->UseBackgroundOn();
+        double bgColor[4] = {0.1, 0.1, 0.1, 0.7};  // RGBA
+        legendActor->SetBackgroundColor(bgColor);
+
+        // Position the legend in the bottom right corner
+        // Adjust height based on the number of entries
+        double baseHeightPerEntry = 0.04;
+        double verticalPadding = 0.01;
+        double totalHeight =
+            numEntries > 0 ? (numEntries * baseHeightPerEntry + 2 * verticalPadding) : 0;
+        double y1 = -1.0 + verticalPadding;  // Add padding at the bottom
+        double y2 = y1 + totalHeight;
+        // Ensure y2 does not exceed the top of the viewport or a reasonable limit
+        y2 = std::min(y2, 0.98);
+
+        legendActor->GetPositionCoordinate()->SetCoordinateSystemToView();
+        legendActor->GetPositionCoordinate()->SetValue(0.4, y1);  // Keep width fixed, set bottom y
+        legendActor->GetPosition2Coordinate()->SetCoordinateSystemToView();
+        legendActor->GetPosition2Coordinate()->SetValue(1.0, y2);  // Keep right x fixed, set top y
+        legendActor->ScalarVisibilityOff();  // Ensure legend itself isn't colored by scalars
+        legendActor->PickableOff();
+    }
+    else {
+        spdlog::debug("Legend actor is null, skipping legend setup for fibers.");
+    }
 }
