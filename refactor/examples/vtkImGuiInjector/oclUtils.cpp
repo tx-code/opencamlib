@@ -400,13 +400,18 @@ ocl::Path createGuidePath(const ocl::STLSurf& surface)
     y_min -= 0.05 * y_len;
     double y_max = surface.bb.maxpt.y;
     y_max += 0.05 * y_len;
+
+    double z_len = surface.bb.maxpt.z - surface.bb.minpt.z;
+    // sometimes，the surface is too small, so we add a small offset
+    double z_min = surface.bb.minpt.z - std::max(0.01, 0.05 * z_len);
+
     constexpr int NY = 40;
     const double dy = (y_max - y_min) / NY;
     ocl::Path path;
     for (int n = 0; n < NY; n++) {
         double y = y_min + n * dy;
-        ocl::Point p1(x_min, y, 0);
-        ocl::Point p2(x_max, y, 0);
+        ocl::Point p1(x_min, y, z_min);
+        ocl::Point p2(x_max, y, z_min);
         ocl::Line l(p1, p2);
         path.append(l);
     }
@@ -571,7 +576,9 @@ void pathDropCutter(CAMModelManager& model, vtkActorManager& actorManager, doubl
     pdc.setPath(&guidePath);
     pdc.setSampling(sampling);
     pdc.reset();
-    pdc.setZ(model.surface->bb.minpt.z);
+    // 设置z值为表面最小z值减去 max(0.01, 0.05 * (surface.bb.maxpt.z - surface.bb.minpt.z))
+    pdc.setZ(model.surface->bb.minpt.z
+             - max(0.01, 0.05 * (model.surface->bb.maxpt.z - model.surface->bb.minpt.z)));
     pdc.run();
     auto points = pdc.getPoints();
     spdlog::info("PDC done in {} s and got {} points", sw, points.size());
@@ -654,7 +661,10 @@ void adaptivePathDropCutter(CAMModelManager& model,
     apdc.setSampling(sampling);
     apdc.setMinSampling(minSampling);
     apdc.reset();
-    apdc.setZ(model.surface->bb.minpt.z);
+    // FIXME: APDC实际上并没有考虑这个minZ值
+    // 设置z值为表面最小z值减去 max(0.01, 0.05 * (surface.bb.maxpt.z - surface.bb.minpt.z))
+    apdc.setZ(model.surface->bb.minpt.z
+              - max(0.01, 0.05 * (model.surface->bb.maxpt.z - model.surface->bb.minpt.z)));
     apdc.run();
     auto points = apdc.getPoints();
     spdlog::info("APDC done in {} s and got {} points", sw, points.size());
@@ -748,7 +758,7 @@ void fiberPushCutter(CAMModelManager& model,
     fpc.run(fiber);
 
     spdlog::info("After running the fpc, fiber: {}", fiber.str());
-    UpdateFiberActor(actorManager.operationActor, {fiber});
+    UpdateFiberActor(actorManager.operationActor, actorManager.legendActor, {fiber});
 }
 
 void batchFiberPushCutter(CAMModelManager& model,
@@ -862,8 +872,9 @@ void batchFiberPushCutter(CAMModelManager& model,
     all_fibers.insert(all_fibers.end(), xfibers_processed.begin(), xfibers_processed.end());
     all_fibers.insert(all_fibers.end(), yfibers_processed.begin(), yfibers_processed.end());
 
-    UpdateFiberActor(actorManager.operationActor, all_fibers);
+    UpdateFiberActor(actorManager.operationActor, actorManager.legendActor, all_fibers);
     if (actorManager.operationActor) {
         actorManager.operationActor->SetObjectName("Batch Fiber PushCutter");
+        actorManager.legendActor->VisibilityOn();
     }
 }
