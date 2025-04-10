@@ -65,6 +65,17 @@ void SettingsManager::LoadSettings()
                     s_settings.random_points = op["random_points"].get<int>();
             }
 
+            // 加载UI设置
+            if (j.contains("ui")) {
+                auto& ui = j["ui"];
+                if (ui.contains("show_cutter_window"))
+                    s_settings.show_cutter_window = ui["show_cutter_window"].get<bool>();
+                if (ui.contains("show_operation_window"))
+                    s_settings.show_operation_window = ui["show_operation_window"].get<bool>();
+                if (ui.contains("show_primitive_window"))
+                    s_settings.show_primitive_window = ui["show_primitive_window"].get<bool>();
+            }
+
             spdlog::info("Settings loaded successfully");
         }
         catch (const std::exception& e) {
@@ -96,6 +107,11 @@ void SettingsManager::SaveSettings()
                       {"lift_from", s_settings.lift_from},
                       {"lift_to", s_settings.lift_to},
                       {"random_points", s_settings.random_points}};
+
+    // 保存UI设置
+    j["ui"] = {{"show_cutter_window", s_settings.show_cutter_window},
+               {"show_operation_window", s_settings.show_operation_window},
+               {"show_primitive_window", s_settings.show_primitive_window}};
 
     std::ofstream file(SETTINGS_JSON);
     if (file.is_open()) {

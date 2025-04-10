@@ -2,7 +2,8 @@
 
 #include <boost/math/constants/constants.hpp>
 
-namespace ocl {
+namespace ocl
+{
 
 /**
  * @brief Cutter和Operation的设置
@@ -27,6 +28,11 @@ struct OCLSettings
     // 随机批量降刀特有设置
     int random_points = 10000;
 
+    // 控制UI窗口显示状态
+    bool show_cutter_window = false;
+    bool show_operation_window = false;
+    bool show_primitive_window = false;
+
     // 获取默认角度值（因为不能用constexpr存储计算结果）
     static double GetDefaultAngleInDeg()
     {
@@ -38,18 +44,19 @@ struct OCLSettings
 /**
  * @brief 设置管理器类，处理应用程序设置的加载和保存
  */
-class SettingsManager {
+class SettingsManager
+{
 public:
     /**
      * @brief 加载设置
      */
     static void LoadSettings();
-    
+
     /**
-     * @brief 保存设置
+     * @brief 保存设置, Called when the injector is tearing down
      */
     static void SaveSettings();
-    
+
     /**
      * @brief 获取当前设置引用
      * @return 设置引用
@@ -59,9 +66,9 @@ public:
 private:
     // 存储设置的JSON文件路径
     static constexpr char SETTINGS_JSON[] = "ocl_settings.json";
-    
+
     // 全局设置对象
     static OCLSettings s_settings;
 };
 
-} // namespace ocl 
+}  // namespace ocl

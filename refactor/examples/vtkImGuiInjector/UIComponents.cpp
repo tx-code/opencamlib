@@ -37,10 +37,7 @@ static vtkSmartPointer<CutterTimerCallback> g_cutterCallback;
 // 用于Debug DropCutter的静态变量
 static std::vector<ocl::CLPoint> g_debugResultPoints;
 static int g_debugCurrentPointIndex = 0;
-static bool g_showDebugWindow = false;      // 控制调试窗口显示
-static bool g_showCutterWindow = false;     // 控制刀具窗口显示
-static bool g_showOperationWindow = false;  // 控制操作窗口显示
-static bool g_showPrimitiveWindow = false;   // 控制原始几何体窗口显示
+static bool g_showDebugWindow = false;  // 控制调试窗口显示
 
 void UIComponents::DrawLoadStlUI(vtkDearImGuiInjector* injector)
 {
@@ -111,7 +108,8 @@ void UIComponents::DrawCutterUI(vtkDearImGuiInjector* injector)
     auto& actorManager = injector->ActorManager;
 
     // 刀具窗口
-    if (g_showCutterWindow) {
+    auto& settings = SettingsManager::GetSettings();
+    if (settings.show_cutter_window) {
         ImGui::SetNextWindowSize(ImVec2(400, 350), ImGuiCond_FirstUseEver);
 
         // 使用固定位置的窗口，靠近屏幕左侧
@@ -119,14 +117,15 @@ void UIComponents::DrawCutterUI(vtkDearImGuiInjector* injector)
         ImVec2 windowPos(20, 100);
         ImGui::SetNextWindowPos(windowPos, ImGuiCond_FirstUseEver);
 
-        if (ImGui::Begin("Add Cutter", &g_showCutterWindow, ImGuiWindowFlags_AlwaysAutoResize)) {
+        if (ImGui::Begin("Add Cutter",
+                         &settings.show_cutter_window,
+                         ImGuiWindowFlags_AlwaysAutoResize)) {
             static const char* cutter_types[] = {"CylCutter",
                                                  "BallCutter",
                                                  "BullCutter",
                                                  "ConeCutter"};
 
             // 使用全局设置
-            auto& settings = SettingsManager::GetSettings();
             bool changed = false;
 
             changed |= ImGui::Combo("Cutter Types",
@@ -155,10 +154,6 @@ void UIComponents::DrawCutterUI(vtkDearImGuiInjector* injector)
                 changed |= ImGui::InputDouble("Angle", &settings.angle_in_deg, 0.01f, 1.0f, "%.3f");
             }
 
-            // 如果有变化，保存设置
-            if (changed) {
-                SettingsManager::SaveSettings();
-            }
 
             if (ImGui::Button("Ok")) {
                 // 根据cutter_type_index创建相应类型的刀具
@@ -205,7 +200,8 @@ void UIComponents::DrawOperationUI(vtkDearImGuiInjector* injector)
     auto& actorManager = injector->ActorManager;
 
     // 操作窗口
-    if (g_showOperationWindow) {
+    auto& settings = SettingsManager::GetSettings();
+    if (settings.show_operation_window) {
         ImGui::SetNextWindowSize(ImVec2(400, 420), ImGuiCond_FirstUseEver);
 
         // 使用固定位置的窗口，靠近屏幕左侧
@@ -214,7 +210,7 @@ void UIComponents::DrawOperationUI(vtkDearImGuiInjector* injector)
         ImGui::SetNextWindowPos(windowPos, ImGuiCond_FirstUseEver);
 
         if (ImGui::Begin("Add Operation",
-                         &g_showOperationWindow,
+                         &settings.show_operation_window,
                          ImGuiWindowFlags_AlwaysAutoResize)) {
             static const char* op_types[] = {"WaterLine",
                                              "AdaptiveWaterLine",
@@ -224,7 +220,6 @@ void UIComponents::DrawOperationUI(vtkDearImGuiInjector* injector)
                                              "BatchFiberPushCutter"};
 
             // 使用全局设置
-            auto& settings = SettingsManager::GetSettings();
             bool changed = false;
 
             changed |= ImGui::Combo("Operation Types",
@@ -233,8 +228,8 @@ void UIComponents::DrawOperationUI(vtkDearImGuiInjector* injector)
                                     IM_ARRAYSIZE(op_types));
 
             switch (settings.op_type_index) {
-                case 0: // waterline
-                case 5: // batch fiber push cutter
+                case 0:  // waterline
+                case 5:  // batch fiber push cutter
                     changed |=
                         ImGui::InputDouble("Sampling", &settings.sampling, 0.01f, 1.0f, "%.3f");
                     changed |=
@@ -280,11 +275,6 @@ void UIComponents::DrawOperationUI(vtkDearImGuiInjector* injector)
                     break;
                 default:
                     break;
-            }
-
-            // 如果有变化，保存设置
-            if (changed) {
-                SettingsManager::SaveSettings();
             }
 
             ImGui::BeginDisabled(!modelManager.cutter || !modelManager.surface);
@@ -881,10 +871,11 @@ void UIComponents::DrawCAMExample(vtkDearImGuiInjector* injector)
     auto& actorManager = injector->ActorManager;
 
     if (ImGui::BeginMenu("OCL Operations")) {
-        ImGui::MenuItem("Create Primitive", nullptr, &g_showPrimitiveWindow);
+        auto& settings = SettingsManager::GetSettings();
+        ImGui::MenuItem("Create Primitive", nullptr, &settings.show_primitive_window);
         DrawLoadStlUI(injector);
-        ImGui::MenuItem("Add Cutter", nullptr, &g_showCutterWindow);
-        ImGui::MenuItem("Add Operation", nullptr, &g_showOperationWindow);
+        ImGui::MenuItem("Add Cutter", nullptr, &settings.show_cutter_window);
+        ImGui::MenuItem("Add Operation", nullptr, &settings.show_operation_window);
         if (ImGui::BeginMenu("OCL Benchmark")) {
             static bool verbose = true;
             ImGui::Checkbox("Verbose", &verbose);
@@ -1035,14 +1026,17 @@ void UIComponents::DrawDebugDropCutterWindow(vtkDearImGuiInjector* injector)
 
 void UIComponents::DrawPrimitiveUI(vtkDearImGuiInjector* injector)
 {
-    if (!g_showPrimitiveWindow) {
+    auto& settings = SettingsManager::GetSettings();
+    if (!settings.show_primitive_window) {
         return;
     }
 
     auto& modelManager = injector->ModelManager;
     auto& actorManager = injector->ActorManager;
 
-    ImGui::Begin("Primitive Geometry", &g_showPrimitiveWindow, ImGuiWindowFlags_AlwaysAutoResize);
+    ImGui::Begin("Primitive Geometry",
+                 &settings.show_primitive_window,
+                 ImGuiWindowFlags_AlwaysAutoResize);
 
     // 使用静态变量保存选择的几何体类型
     static const char* primitive_types[] =
@@ -1093,6 +1087,7 @@ void UIComponents::DrawPrimitiveUI(vtkDearImGuiInjector* injector)
             if (ImGui::Button("Create Cube")) {
                 modelManager.createCube(cube_length, cube_width, cube_height);
                 UpdateStlSurfActor(actorManager.modelActor, *modelManager.surface);
+                injector->ForceResetCamera();
             }
             break;
 
@@ -1104,6 +1099,7 @@ void UIComponents::DrawPrimitiveUI(vtkDearImGuiInjector* injector)
             if (ImGui::Button("Create Sphere")) {
                 modelManager.createSphere(sphere_radius, sampling);
                 UpdateStlSurfActor(actorManager.modelActor, *modelManager.surface);
+                injector->ForceResetCamera();
             }
             break;
 
@@ -1119,6 +1115,7 @@ void UIComponents::DrawPrimitiveUI(vtkDearImGuiInjector* injector)
             if (ImGui::Button("Create Cylinder")) {
                 modelManager.createCylinder(cylinder_diameter, cylinder_height, sampling, closed);
                 UpdateStlSurfActor(actorManager.modelActor, *modelManager.surface);
+                injector->ForceResetCamera();
             }
             break;
 
@@ -1141,6 +1138,7 @@ void UIComponents::DrawPrimitiveUI(vtkDearImGuiInjector* injector)
                                         sampling,
                                         closed);
                 UpdateStlSurfActor(actorManager.modelActor, *modelManager.surface);
+                injector->ForceResetCamera();
             }
             break;
 
@@ -1153,6 +1151,7 @@ void UIComponents::DrawPrimitiveUI(vtkDearImGuiInjector* injector)
             if (ImGui::Button("Create Ellipsoid")) {
                 modelManager.createEllipsoid(ellipsoid_radius1, ellipsoid_radius2, sampling);
                 UpdateStlSurfActor(actorManager.modelActor, *modelManager.surface);
+                injector->ForceResetCamera();
             }
             break;
 
@@ -1165,6 +1164,7 @@ void UIComponents::DrawPrimitiveUI(vtkDearImGuiInjector* injector)
             if (ImGui::Button("Create Torus")) {
                 modelManager.createTorus(torus_major_radius, torus_minor_radius, sampling);
                 UpdateStlSurfActor(actorManager.modelActor, *modelManager.surface);
+                injector->ForceResetCamera();
             }
             break;
 
@@ -1215,6 +1215,7 @@ void UIComponents::DrawPrimitiveUI(vtkDearImGuiInjector* injector)
             if (ImGui::Button("Create CustomTriangles")) {
                 modelManager.createCustomTriangles(custom_triangles);
                 UpdateStlSurfActor(actorManager.modelActor, *modelManager.surface);
+                injector->ForceResetCamera();
             }
             ImGui::EndDisabled();
             break;

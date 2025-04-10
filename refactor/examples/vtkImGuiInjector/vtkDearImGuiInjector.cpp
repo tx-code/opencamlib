@@ -6,6 +6,7 @@
 #include <unordered_map>
 
 #include "vtkDearImGuiInjector.h"
+#include "SettingsManager.h"
 #include "vtkKeySymToImGuiKey.h"
 
 #include <vtkCallbackCommand.h>
@@ -231,6 +232,9 @@ bool vtkDearImGuiInjector::SetUp(vtkRenderWindow* renWin)
 void vtkDearImGuiInjector::TearDown(vtkObject* caller, unsigned long eid, void* callData)
 {
     spdlog::info("Starting resource cleanup");
+
+    ocl::SettingsManager::SaveSettings();
+
     auto interactor = vtkRenderWindowInteractor::SafeDownCast(caller);
     if (interactor != nullptr) {
         interactor->SetDone(true);
